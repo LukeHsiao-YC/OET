@@ -209,6 +209,20 @@ details summary{padding-block:4px}
 .raimgs img{width:100%;border:1px solid var(--line);border-radius:6px;background:#fff}
 @media (max-width:480px){.stats b{font-size:20px}.qcard{padding:16px}}
 @media (prefers-reduced-motion:no-preference){.qcard{animation:in .18s ease-out}@keyframes in{from{transform:translateY(4px);opacity:.6}to{transform:none;opacity:1}}}
+mark.lg{background:var(--amber);color:var(--card);border-radius:3px;padding:0 2px}
+sup.lgt{font-size:10px;color:var(--amber);margin-left:1px}
+.s5t{font:inherit;border:0;background:none;padding:0;color:inherit;cursor:pointer}
+.s5t.ok{background:var(--ok-soft);outline:2px solid var(--ok)}
+.s5t.no{background:var(--red-soft);outline:2px dashed var(--red)}
+.patnav{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.pchip{min-width:34px;height:32px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-family:var(--f-mono);font-size:13px;cursor:pointer}
+.pchip.ans{background:var(--ok-soft)}
+.pchip.dot{border-color:var(--amber);border-width:2px}
+.pchip.uns{border-style:dashed}
+.pchip.cur{outline:2px solid var(--ink)}
+.sen.pick{background:var(--pen-soft);outline:2px solid var(--ink)}
+.chainbar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;margin:8px 0;border:1px solid var(--amber);border-radius:6px;font-size:14px}
+details summary{cursor:pointer}
 </style>
 
 <div class="wrap" id="app"></div>
@@ -824,7 +838,7 @@ function home(){
       <div class="row"><button class="btn primary" data-a="review">開始複習 · ${st.due||"精選 15"} 題</button>
       ${weak?`<button class="btn" data-a="weak">錯題重練 · ${weak}</button>`:""}<button class="btn ghost" data-a="mock">總複習模擬 · 25 題</button></div>`;
   }
-  return header()+`<section class="hero">${V.flash?`<p class="xp">${esc(V.flash)}</p>`:""}${hero}</section>
+  return header()+syncLine()+`<section class="hero">${V.flash?`<p class="xp">${esc(V.flash)}</p>`:""}${hero}</section>
   <section class="stats"><div><span class="label">已熟練</span><b>${st.m}</b></div><div><span class="label">學習中</span><b>${st.l}</b></div><div><span class="label">未接觸</span><b>${st.n}</b></div></section>
   <div class="bar" aria-label="熟練度"><i style="width:${Math.round(st.m/ITEMS.length*100)}%"></i></div>
   <section class="section"><h2>依 sub-test 練習</h2>
@@ -1008,10 +1022,10 @@ const fmtT=ms=>{const s=Math.max(0,Math.round(ms/1000));return Math.floor(s/60)+
 const firstSplit=p=>{const m=p.match(/^(.+?[.!?])\s+(.*)$/);return m?[m[1],m[2]]:[p,""]};
 function labRec(id){return S.lab[id]||{}}
 function startSkim(id){V={view:"skim",L:{id,phase:"pre",t0:Date.now(),tEnd:0,qi:0,picks:[],answered:false}};render();window.scrollTo(0,0)}
-function startScan(id){const now=Date.now();V={view:"scan",L:{id,qi:0,t0:now,tAll:now,times:[],res:[],answered:false,pick:null}};render();window.scrollTo(0,0)}
+function startScan(id){const now=Date.now();V={view:"scan",L:{id,qi:0,t0:now,tAll:now,times:[],res:[],answered:false,pick:null,order:getScan(id).q.map((_,i)=>i),dots:[],spent:{}}};render();window.scrollTo(0,0)}
 function skimview(){
   const L=V.L,P=SKIM.find(x=>x.id===L.id);
-  const top=`<div class="sess-top"><button class="btn ghost" data-a="home">結束</button><span class="label">Skimming · 目標 2:00 內</span><span class="clock" id="clock">${fmtT(Date.now()-L.t0)}</span></div>`;
+  const top=`<div class="sess-top"><button class="btn ghost" data-a="home">結束</button><span class="label">Skimming · 目標 1:30 內</span><span class="clock" id="clock">${fmtT(Date.now()-L.t0)}</span></div>`;
   const art=(full)=>`<article class="article"><h3>${esc(P.title)}</h3>${P.paras.map((p,k)=>{const [f,r]=firstSplit(p);return `<p><span class="pno">¶${k+1}</span><b>${esc(f)}</b> <span class="${full?"":"dim"}">${esc(r)}</span></p>`}).join("")}</article>`;
   if(L.phase==="pre"||L.phase==="full"){
     return top+`<section class="hero"><ol class="steps"><li>讀標題</li><li>讀每段第一句（已加粗）</li><li>注意重複出現的關鍵字</li><li>判斷整篇主題，不要停在不懂的字上，也不要在腦中逐句翻譯</li></ol>
@@ -1044,55 +1058,61 @@ function skimview(){
   const score=L.picks.filter(Boolean).length,rec=labRec(P.id);
   return header()+`<section class="end"><h2>略讀完成</h2>
   <div class="res"><div><span class="label">略讀時間</span><b>${fmtT(time)}</b></div><div><span class="label">理解題</span><b>${score}/${P.q.length}</b></div><div><span class="label">最佳時間</span><b>${rec.best?fmtT(rec.best):"—"}</b></div></div>
-  <p class="xp" style="margin-top:16px">${time<=120000?(score>=3?"在 2 分鐘內讀完，也抓到架構。下次試著只讀粗體的第一句就作答。":"速度夠了，但理解題錯比較多。多花幾秒在每段第一句和轉折詞（However、Although）。"):"超過 2 分鐘。書中提醒：不要停在不懂的字上，也不要逐句翻譯。下次先只讀粗體句。"}</p>
+  <p class="xp" style="margin-top:16px">${time<=90000?(score>=3?"在 90 秒內讀完，也抓到架構。下次試著只讀粗體的第一句就作答。":"速度夠了，但理解題錯比較多。多花幾秒在每段第一句和轉折詞（However、Although）。"):"超過 90 秒。書中提醒：不要停在不懂的字上，也不要逐句翻譯。下次先只讀粗體句。"}</p>
   <p class="note">最佳時間只在理解題答對 3 題以上時才會記錄。</p>
   <div class="row" style="margin-top:12px"><button class="btn primary" data-a="home">回到首頁</button><button class="btn" data-a="skim" data-id="${P.id}">再讀一次</button></div></section>`;
 }
+const scCur=L=>L.order?L.order[L.qi]:L.qi;
 function scanview(){
-  const L=V.L,T=getScan(L.id);
-  if(L.qi>=T.q.length){
+  const L=V.L,T=getScan(L.id),QN=L.order?L.order.length:T.q.length;
+  if(L.qi>=QN){
     const n=T.q.length,acc=L.res.filter(Boolean).length,avg=L.times.reduce((a,b)=>a+b,0)/n,mx=Math.max(...L.times,1),rec=labRec(T.id);
     const slow=L.times.map((t,i)=>({t,i})).sort((a,b)=>b.t-a.t)[0];
+    const dots=L.dots||[],dotOk=dots.filter(i=>L.res[i]).length;
+    const dotNote=dots.length?`<p class="xp">你跳過 ${dots.length} 題（第 ${dots.map(i=>i+1).join("、")} 題），回頭後答對 ${dotOk} 題。卡住的題目在地圖更清楚時，常常就變簡單了。</p>`:`<p class="note">這次沒有跳過任何題目。規則 3：任何一題超過 40 秒，就按「• 加點跳過」。</p>`;
     return header()+`<section class="end"><h2>掃讀完成：${esc(T.title)}</h2>
     ${T.exam?`<div class="res"><div><span class="label">答對</span><b>${acc}/${n}</b></div><div><span class="label">總時間</span><b>${fmtT(L.totalMs||0)}</b></div><div><span class="label">限時</span><b>${T.exam}:00</b></div></div><p class="xp" style="margin-top:12px">${(L.totalMs||0)>T.exam*60000?"超過 15 分鐘。Part A 先做配對題（1–7），每題只看標題和開頭；短答題先找關鍵字再讀那一句。":"在時間內完成。"}答錯的題目請按「再練一次」，答完每題都會標出答案在原文哪一句。</p>`:`<div class="res"><div><span class="label">答對</span><b>${acc}/${n}</b></div><div><span class="label">平均每題</span><b>${Math.round(avg/1000)} 秒</b></div><div><span class="label">最佳平均</span><b>${rec.best?Math.round(rec.best/1000)+" 秒":"—"}</b></div></div>`}
-    <div class="times" aria-label="每題用時">${L.times.map(t=>`<i class="${t>60000?"slow":""}" style="height:${Math.max(4,Math.round(t/mx*100))}%" title="${Math.round(t/1000)} 秒"></i>`).join("")}</div>
-    <p class="note">每根柱子是一題的用時，紅色代表超過 60 秒。Reading Part A 是 15 分鐘 20 題，平均每題約 45 秒。</p>
+    ${dotNote}<div class="times" aria-label="每題用時">${L.times.map(t=>`<i class="${t>40000?"slow":""}" style="height:${Math.max(4,Math.round(t/mx*100))}%" title="${Math.round(t/1000)} 秒"></i>`).join("")}</div>
+    <p class="note">每根柱子是一題的用時，紅色代表超過 40 秒（規則 3：超過 40 秒就該跳過）。Reading Part A 是 15 分鐘 20 題，平均每題約 45 秒。</p>
     <p class="xp">最慢的是第 ${slow.i+1} 題（${Math.round(slow.t/1000)} 秒）：「${esc(T.q[slow.i].q)}」。關鍵字對應是 <b>${esc(T.q[slow.i].map[0])}</b> ↔ <b>${esc(T.q[slow.i].map[1])}</b>。</p>
     <div class="row" style="margin-top:12px"><button class="btn primary" data-a="home">回到首頁</button><button class="btn" data-a="scan" data-id="${T.id}">再練一次</button><button class="btn ghost" data-a="cat" data-d="21">練關鍵字對應</button></div></section>`;
   }
-  const q=T.q[L.qi],ok=L.ok;
+  const ci=scCur(L),q=T.q[ci],ok=L.ok,isBack=(L.dots||[]).includes(ci)&&L.qi>=T.q.length,canSkip=L.order&&!L.answered&&!(L.dots||[]).includes(ci);
   let ctl="";
   if(q.t==="match")ctl=`<div class="letters">${T.texts.map(t=>`<button class="btn ${L.answered&&t.k===q.a?"primary":""}" data-a="scpick" data-v="${t.k}" ${L.answered?"disabled":""}>${t.k}</button>`).join("")}</div>`;
-  if(q.t==="short")ctl=`<form class="typein" data-f="scshort"><input id="ans" autocomplete="off" ${L.answered?"disabled":""} value="${esc(L.pick||"")}" aria-label="簡答"><button class="btn primary" ${L.answered?"disabled":""}>送出</button></form>`;
+  if(q.t==="short")ctl=`<form class="typein" data-f="scshort"><input id="ans" autocomplete="off" ${L.answered?"disabled":""} value="${esc(L.pick||"")}" aria-label="簡答"><button class="btn primary" ${L.answered?"disabled":""}>送出</button></form>${L.blankWarn&&!L.answered?`<p class="xp" style="margin:0">空白一定 0 分。用你的地圖猜一個答案再送出；真的不想寫，再按一次送出。</p>`:""}`;
+  if(canSkip)ctl+=`<div><button class="btn ghost" data-a="scskip" title="規則 3：超過 40 秒就跳過">• 加點跳過，最後再回來</button></div>`;
   if(q.t==="tap")ctl=`<p class="muted" style="margin:0">${L.answered?"":"在下方原文中點選答案所在的句子。"}</p>`;
   const fb=L.answered?`<div class="fb" style="padding-top:10px"><div class="verdict ${ok?"ok":"no"}">${ok?"找到了":"答案："+esc(q.t==="match"?"Text "+q.a:q.t==="short"?q.show:"見下方綠色標示")}</div>
-    <div class="map"><span class="label">關鍵字對應</span><code>${esc(q.map[0])}</code>↔<code>${esc(q.map[1])}</code>${synBtnFor(q.map[0],q.map[1])}</div><p class="xp">${esc(q.x)}</p>
+    <div class="map"><span class="label">關鍵字對應</span><code>${esc(q.map[0])}</code>↔<code>${esc(q.map[1])}</code>${synBtnFor(q.map[0],q.map[1])}</div><p class="xp">${esc(q.x)}</p>${q.t==="short"?formNote(q,L.pick):""}
     <div><button class="btn primary" data-a="scnext" id="nextBtn">${L.qi+1>=T.q.length?"看結果":"下一題"}</button></div></div>`:"";
   const tx=T.texts.map(t=>`<section class="tx ${T.block?"block":""} ${L.answered&&q.loc[0]===t.k?"hit":""}"><h4><span class="k">${t.k}</span>${esc(t.h)}</h4><div>${t.s.map((s,i)=>{
     let c="";if(L.answered){if(q.loc[0]===t.k&&q.loc[1]===i)c="hit";else if(q.t==="tap"&&L.pick===t.k+i)c="miss"}
-    return `<button class="sen ${c}" ${q.t==="tap"&&!L.answered?`data-a="sctap" data-v="${t.k}${i}"`:'tabindex="-1"'}>${esc(s)}</button> `}).join("")}</div></section>`).join("");
-  return `<div class="sess-top"><button class="btn ghost" data-a="home">結束</button><span class="mono">${L.qi+1} / ${T.q.length}</span>${T.exam?`<span class="clock" data-start="${L.tAll}" data-dur="${T.exam*60000}" title="總時間">${T.exam}:00</span>`:""}<span class="clock" ${L.answered?"":'id="clock"'}>${L.answered?fmtT(L.times[L.times.length-1]):fmtT(Date.now()-L.t0)}</span></div>
-  <div class="qbar"><span class="label">Reading Part A · 掃讀 · ${q.t==="match"?"Which text?":q.t==="short"?"短答":"找出句子"}</span><p class="qtext">${kwText(q.q)}</p>${ctl}${fb}</div>
+    return `<button class="sen ${c}" ${q.t==="tap"&&!L.answered?`data-a="sctap" data-v="${t.k}${i}"`:'tabindex="-1"'}>${c==="hit"?logicHL(s):esc(s)}</button> `}).join("")}</div></section>`).join("");
+  return `<div class="sess-top"><button class="btn ghost" data-a="home">結束</button><span class="mono">${Math.min(L.res.filter(x=>x!==undefined).length+1,T.q.length)} / ${T.q.length}${(L.dots||[]).length?" · •"+L.dots.length:""}</span>${T.exam?`<span class="clock" data-start="${L.tAll}" data-dur="${T.exam*60000}" title="總時間">${T.exam}:00</span>`:""}<span class="clock" ${L.answered?"":'id="clock"'}>${L.answered?fmtT(L.times[ci]):fmtT(Date.now()-L.t0+((L.spent||{})[ci]||0))}</span></div>
+  <div class="qbar"><span class="label">${isBack?"↩ 回頭題 · ":""}Reading Part A · 掃讀 · ${q.t==="match"?"Which text?":q.t==="short"?"短答":"找出句子"}</span><p class="qtext">${kwText(q.q)}</p>${ctl}${fb}</div>
   ${T.exam?tipBar("RA"):""}${T.img?`<div class="row" style="margin-top:10px"><button class="btn ghost" data-a="raimg">${L.showImg?"隱藏原版版面":"看原版版面（表格、圖表）"}</button></div>${L.showImg?`<div class="raimgs">${T.img.map(k=>`<img src="${RAIMG[k]||""}" alt="Reading Part A 原版頁面">`).join("")}</div>`:""}`:""}
   <div class="texts ${q.t==="tap"&&!L.answered?"tapmode":""}">${tx}</div>
   <p class="disclaim" style="margin-top:12px">${T.src?esc(T.src):"練習用文本，數值與建議為閱讀訓練而改寫，非臨床指引。"}</p>`;
 }
-function scanAnswer(ok,pick){const L=V.L;if(L.answered)return;L.answered=true;L.ok=ok;L.pick=pick;L.times.push(Date.now()-L.t0);L.res.push(ok);render();
+function scanAnswer(ok,pick){const L=V.L;if(L.answered)return;L.answered=true;L.ok=ok;L.pick=pick;const ci=scCur(L);L.times[ci]=((L.spent||{})[ci]||0)+Date.now()-L.t0;L.res[ci]=ok;L.blankWarn=false;render();
   const h=document.querySelector(".sen.hit");if(h&&h.scrollIntoView)h.scrollIntoView({block:"center",behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"})}
+function scanSkip(){const L=V.L;if(L.answered||!L.order)return;const ci=scCur(L);L.spent[ci]=(L.spent[ci]||0)+Date.now()-L.t0;L.dots.push(ci);L.order.push(ci);L.qi++;L.pick=null;L.blankWarn=false;L.t0=Date.now();render();window.scrollTo(0,0)}
 function scanNext(){const L=V.L,T=getScan(L.id);L.qi++;L.answered=false;L.pick=null;L.ok=null;L.t0=Date.now();
-  if(L.qi>=T.q.length){const avg=L.times.reduce((a,b)=>a+b,0)/T.q.length,acc=L.res.filter(Boolean).length;const r=labRec(T.id);
+  if(L.qi>=(L.order?L.order.length:T.q.length)){const avg=L.times.reduce((a,b)=>a+b,0)/T.q.length,acc=L.res.filter(Boolean).length;const r=labRec(T.id);
     L.totalMs=Date.now()-L.tAll;
     if(T.exam){saveRec(T.id,acc,T.q.length)}else{if(acc>=Math.ceil(T.q.length*.75)&&(!r.best||avg<r.best))r.best=avg;r.last=avg;r.acc=acc;S.lab[T.id]=r;touchStreak();save()}}
   render();window.scrollTo(0,0)}
 function touchStreak(){const t=today();if(S.streak.last!==t){S.streak.count=S.streak.last===addDays(t,-1)?S.streak.count+1:1;S.streak.last=t}}
 setInterval(()=>{document.querySelectorAll("[data-start]").forEach(el=>{const st=+el.dataset.start;if(!st)return;const dur=+el.dataset.dur||0,ms=Date.now()-st;
   if(dur){const rem=dur-ms;el.textContent=(rem<0?"-":"")+fmtT(Math.abs(rem));el.className="clock"+(rem<0?" over":rem<dur*.2?" warn":"")}else el.textContent=fmtT(ms)})},500);
-setInterval(()=>{const c=document.getElementById("clock");if(!c||!V.L)return;const ms=Date.now()-V.L.t0;c.textContent=fmtT(ms);
-  const [w,o]=V.view==="skim"?[90000,120000]:[30000,60000];c.className="clock"+(ms>o?" over":ms>w?" warn":"")},250);
+setInterval(()=>{const c=document.getElementById("clock");if(!c||!V.L)return;const ms=Date.now()-V.L.t0+(V.view==="scan"&&V.L.spent?(V.L.spent[scCur(V.L)]||0):0);c.textContent=fmtT(ms);
+  const [w,o]=V.view==="skim"?[60000,90000]:[30000,40000];c.className="clock"+(ms>o?" over":ms>w?" warn":"")},250);
 function labSection(){
   return `<section class="section"><h2>閱讀技巧：Skimming 與 Scanning</h2>
-  <div class="para">${SKIM.map(p=>{const r=labRec(p.id);return `<button class="pcard" data-a="skim" data-id="${p.id}"><span class="label">略讀 · Part C</span><b>${esc(p.title)}</b><span>4 段，目標 2 分鐘內，再用一句話寫主旨</span><span class="mono">${r.best?"最佳 "+fmtT(r.best):"尚未完成"}</span></button>`}).join("")}
-  ${SCAN.map(t=>{const r=labRec(t.id);return `<button class="pcard" data-a="scan" data-id="${t.id}"><span class="label">掃讀 · Part A</span><b>${esc(t.title)}</b><span>${t.texts.length} 篇短文 ${t.q.length} 題，每題目標 60 秒內</span><span class="mono">${r.best?"最佳平均 "+Math.round(r.best/1000)+" 秒":"尚未完成"}</span></button>`}).join("")}
+  <div class="para">${SKIM.map(p=>{const r=labRec(p.id);return `<button class="pcard" data-a="skim" data-id="${p.id}"><span class="label">略讀 · Part C</span><b>${esc(p.title)}</b><span>4 段，目標 90 秒內，抓主張、架構、結論</span><span class="mono">${r.best?"最佳 "+fmtT(r.best):"尚未完成"}</span></button>`}).join("")}
+  ${SCAN.map(t=>{const r=labRec(t.id);return `<button class="pcard" data-a="scan" data-id="${t.id}"><span class="label">掃讀 · Part A</span><b>${esc(t.title)}</b><span>${t.texts.length} 篇短文 ${t.q.length} 題，每題 40 秒內，卡住就加點跳過</span><span class="mono">${r.best?"最佳平均 "+Math.round(r.best/1000)+" 秒":"尚未完成"}</span></button>`}).join("")}
+  <button class="pcard" data-a="rhub" style="border-color:var(--amber)"><span class="label">Reading 訓練中心</span><b>四週計畫・15 分鐘地圖・略讀／掃讀／精讀</b><span>30 秒略讀標籤、15 秒找 5 個詞、邏輯詞精讀、Part A 限時全套（交卷才對答案）、完整 Reading 模考</span><span class="mono">${paSets().filter(s=>S.lab["pa_"+s.id]||S.lab["ph_"+s.id]).length}/${paSets().length} 組練過</span></button>
   <button class="pcard" data-a="cat" data-d="21"><span class="label">關鍵字對應</span><b>Keyword mapping</b><span>題目用字對應到原文的改寫說法，例如 elderly 對應 older adults</span><span class="mono">${unitSeen(21)}/${unitItems(21).length}</span></button></div>
   <p class="note">考試時要避免：Part A 逐字讀、看到陌生字就慌、沒有理由就一直改答案、在一題上卡太久。時間控制也是閱讀能力的一部分。</p></section>`;
 }
@@ -1134,7 +1154,7 @@ function officialSection(){
     return `<button class="pcard" data-a="off" data-t="${t.id}" data-m="${m}"><span class="label">${en}</span><b>${esc(zh)}</b><span class="mono">${r&&r.total?"上次 "+r.last+"/"+r.total+(r.best!=null?" · 最佳 "+r.best:""):(r&&r.done?"已完成":"尚未練習")}</span></button>`}).join("")}</div>`).join("")}</section>`;
 }
 function startOff(tid,m){stopTTS();const t=OBY[tid];
-  if(m==="RA"){startScan(t.RA.id);return}
+  if(m==="RA"){startPAT(t.RA.id);return}
   if(m==="LA")V={view:"oLA",O:{tid,ei:0,vals:{},checked:false,plays:0,rate:1,res:[]}};
   else if(m==="W")V={view:"oW",O:{tid,phase:"rel",marks:{},t0:0,text:""}};
   else if(m==="S")V={view:"oS",O:{tid,phase:"card",step:0,t0:Date.now(),open:{},ck:{}}};
@@ -1143,9 +1163,9 @@ function startOff(tid,m){stopTTS();const t=OBY[tid];
 const TIPS={LA:"技巧：答案是你聽到的原字，筆記的其他文字是改寫（Unit 3 病人說法→筆記）。拼字錯不給分；答錯的字會自動加入每日拼字複習。",
 LB:"技巧：先讀題，圈出問的是什麼（warn、plan、cause、purpose）。but、however、actually 後面通常才是答案。",
 LC:"技巧：先讀題圈關鍵字。正確選項幾乎都是改寫（Unit 12）；陷阱常是原文提到、但不是題目問的那件事。",
-RA:"技巧：1–7 題只看各篇標題和開頭；8–20 題先點題目關鍵字畫底線，再到原文找改寫說法，只讀那一句（掃讀步驟 1–4）。",
-RB:"技巧：先判斷題目問 purpose 還是細節。must、should、unless、however 決定語氣與重點（Unit 11）。",
-RC:"技巧：先用 2 分鐘略讀（標題與每段第一句），再作答。注意代名詞指涉、轉折詞與作者態度（Unit 12、略讀練習）。",
+RA:"15 分鐘地圖：0:45 建地圖（標題、小標題、格式、主題字）→ 配對題每題 25 秒 → 簡答每題 30–40 秒，超過 40 秒加點跳過 → 11:00 回頭 → 最後 1 分鐘只確認、不改答案。答案照抄原文、≤3 字、題目已給單位就不重寫。",
+RB:"先略讀：主題、語氣、說明目的的小標題。再精讀答案那一句：讀兩次（文法、意思），注意 unless、only when、however。選意思相符的選項，不是和原文重複最多字的那個。",
+RC:"先花 90 秒略讀：作者主張、架構、結論。看完題目再到相關段落掃讀關鍵字，精讀前後一兩句。陷阱常是和原文重複最多字、但意思不同的選項；也要注意否定字首（un-、in-、non-）。",
 W:"技巧：先挑相關資訊（Content／Conciseness），再把筆記改寫成句子（Unit 17），最後檢查搭配詞與介系詞（Unit 5、15）。",
 S:"技巧：術語換成白話（Unit 16）；先同理、再解釋、最後確認理解（Unit 14）。"};
 function tipBar(m){return TIPS[m]?`<p class="tipbar">${esc(TIPS[m])}</p>`:""}
@@ -1192,11 +1212,11 @@ function gView(){
   if(O.done){const sc=O.res.filter(r=>r.ok).length,tot=O.res.length;
     return header()+`<section class="end"><h2>${esc(t.name)} · ${esc(M.title)}</h2><div class="res"><div><span class="label">答對</span><b>${sc}/${tot}</b></div><div><span class="label">正確率</span><b>${Math.round(sc/tot*100)}%</b></div><div><span class="label">最佳</span><b>${(S.lab[recKey(t.id,O.m)]||{}).best||0}</b></div></div>
     ${O.res.filter(r=>!r.ok).length?`<h3 style="font-size:17px;margin-top:18px">答錯的題目</h3><div class="list">${O.res.filter(r=>!r.ok).map(r=>`<div class="li" style="grid-template-columns:1fr"><span class="t">${esc(r.q)}</span><span class="z">正解：${esc(r.ans)}　${esc(r.x)}</span></div>`).join("")}</div>`:""}
-    <div class="row" style="margin-top:12px"><button class="btn primary" data-a="home">回到首頁</button><button class="btn" data-a="off" data-t="${t.id}" data-m="${O.m}">再練一次</button><button class="btn ghost" data-a="syn">看我的同義詞表</button></div></section>`}
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-a="home">回到首頁</button>${CHAIN&&CHAIN.tid===O.tid&&CHAIN.step===O.m?`<button class="btn primary" data-a="chainnext">${O.m==="RB"?"接著做 Part C":"看模考結果"}</button>`:""}<button class="btn" data-a="off" data-t="${t.id}" data-m="${O.m}">再練一次</button><button class="btn ghost" data-a="syn">看我的同義詞表</button></div></section>`}
   const skimmable=!L&&G.passage.length>=4;
   if(skimmable&&!O.skimDone){
-    return topBar(`${t.name} · ${M.title} · ${O.gi+1}/${M.groups.length} · 先略讀`,`<span class="clock" data-start="${O.sk0}" data-dur="120000">2:00</span>`)+`<section class="hero">${tipBar("RC")}
-    <ol class="steps"><li>讀標題</li><li>讀每段第一句（粗體）</li><li>注意重複的關鍵字</li><li>說得出每段在講什麼，再開始作答</li></ol>
+    return topBar(`${t.name} · ${M.title} · ${O.gi+1}/${M.groups.length} · 先略讀`,`<span class="clock" data-start="${O.sk0}" data-dur="90000">1:30</span>`)+`<section class="hero">${tipBar("RC")}
+    <ol class="steps"><li>讀標題</li><li>讀每段第一句（粗體）</li><li>注意重複的關鍵字</li><li>說得出作者的主張、文章架構、結論，再開始作答</li></ol>
     <article class="article" style="max-width:none"><h3>${esc(G.intro)}</h3>${G.passage.map((p,k)=>{const [f,r]=firstSplit(p);return `<p><span class="pno">¶${k+1}</span><b>${esc(f)}</b> <span class="${O.skimFull?"":"dim"}">${esc(r)}</span></p>`}).join("")}</article>
     <div class="row">${O.skimFull?"":`<button class="btn" data-a="gskfull">展開全文快速掃過</button>`}<button class="btn primary" data-a="gskgo">開始作答</button></div></section>`;
   }
@@ -1205,7 +1225,7 @@ function gView(){
     :`<article class="article" style="max-width:none">${G.passage.map((p,k)=>`<p>${G.passage.length>1?`<span class="pno">¶${k+1}</span>`:""}${O.checked?hl(p,evs):esc(p)}</p>`).join("")}</article>`;
   const qs=G.qs.map((q,qi)=>{const pk=O.picks[qi];return `<div class="qcard" style="margin-top:12px"><p class="qq">${O.checked?esc(q.q):kwText(q.q)}</p><div class="opts">${q.o.map((o,oi)=>{let c="";if(O.checked){if(oi===q.a)c="right";else if(oi===pk)c="wrong"}else if(oi===pk)c="sel";
     return `<button class="opt ${c}" data-a="gpick" data-q="${qi}" data-i="${oi}" ${O.checked?"disabled":""} aria-pressed="${oi===pk}"><kbd>${"ABCD"[oi]}</kbd><span>${esc(o)}</span></button>`}).join("")}</div>
-    ${O.checked?`${q.pp?`<div class="map"><span class="label">改寫對應</span><code>${esc(q.pp[0])}</code>↔<code>${esc(q.pp[1])}</code>${synBtnFor(q.pp[0],q.pp[1])}</div>`:""}<p class="xp">${esc(q.x)}</p>`:""}</div>`}).join("");
+    ${O.checked?`${q.pp?`<div class="map"><span class="label">改寫對應</span><code>${esc(q.pp[0])}</code>↔<code>${esc(q.pp[1])}</code>${synBtnFor(q.pp[0],q.pp[1])}</div>`:""}<p class="xp">${esc(q.x)}</p>${!L?intensiveNote(q,pk):""}`:""}</div>`}).join("");
   const all=G.qs.every((_,qi)=>O.picks[qi]!=null);
   return topBar(`${t.name} · ${M.title} · ${O.gi+1}/${M.groups.length}`,`<span class="clock" ${O.checked?"":`data-start="${O.gt0}"`}>${fmtT(Date.now()-(O.gt0||Date.now()))}</span>`)+`
   <section class="hero">${O.gi===0&&!O.checked?tipBar(O.m):""}<p class="muted" style="margin:0"><b>${esc(G.intro)}</b></p>${G.note?`<p class="xp">${esc(G.note)}</p>`:""}${L?audioCtl(O)+(!O.checked?`<button class="btn ghost" data-a="gscript" style="justify-self:start">${O.showScript?"隱藏文字稿":"看文字稿（練習用）"}</button>`:""):""}
@@ -1302,6 +1322,9 @@ function synview(){
   ${S.syn.length?`<div class="list">${S.syn.map((p,k)=>`<div class="syrow"><span class="pair">${esc(p.a)} = <span>${esc(p.b)}</span></span><span class="acts"><button class="small" data-a="synok" data-i="${k}" aria-pressed="${!!p.ok}">${p.ok?"能用":"練習中"}</button><button class="small" data-a="syndel" data-i="${k}" aria-label="刪除 ${esc(p.a)}">刪除</button>${canSpeak()?`<button class="small" data-a="say" data-v="${esc(p.a)}">朗讀</button>`:""}</span></div>`).join("")}</div>`:'<p class="muted" style="margin-top:16px">表還是空的。去 Unit 20 答題時點「加入我的同義詞表」，或在上面自己輸入。</p>'}`;
 }
 function render(){
+  if(V.view==="pahub"){app.innerHTML=paHub();return}
+  if(V.view==="pamap"){app.innerHTML=paMapView();const nb=document.getElementById("nextBtn");if(nb)nb.focus({preventScroll:true});return}
+  if(V.view==="pahunt"){app.innerHTML=paHuntView();const nb=document.getElementById("nextBtn");if(nb)nb.focus({preventScroll:true});return}
   if(V.view==="syn"){app.innerHTML=synview();return}
   if(["oLA","oG","oW","oS"].includes(V.view)){app.innerHTML=V.view==="oLA"?laView():V.view==="oG"?gView():V.view==="oW"?wView():sView();return}
   if(V.view==="skim"||V.view==="scan"){app.innerHTML=V.view==="skim"?skimview():scanview();
@@ -1319,6 +1342,7 @@ function render(){
 app.addEventListener("click",ev=>{
   const b=ev.target.closest("[data-a]");if(!b)return;
   const a=b.dataset.a,d=+b.dataset.d;
+  if(/^(pahub|pamap|pahunt|pm|ph)/.test(a)&&paClick(a,b))return;
   if(a==="day")start("day",d);
   else if(a==="cat")start("cat",d);
   else if(a==="mock")start("mock");
@@ -1340,9 +1364,10 @@ app.addEventListener("click",ev=>{
   else if(a==="sknext"){const L=V.L,P=SKIM.find(x=>x.id===L.id);L.qi++;L.answered=false;L.pick=null;L.opts=null;if(L.qi>=P.q.length)L.phase="sum";render()}
   else if(a==="skdone"){const L=V.L,P=SKIM.find(x=>x.id===L.id),t=L.tEnd-L.t0,sc=L.picks.filter(Boolean).length,r=labRec(P.id);
     if(sc>=3&&(!r.best||t<r.best))r.best=t;r.last=t;r.score=sc;S.lab[P.id]=r;touchStreak();save();L.phase="done";render();window.scrollTo(0,0)}
-  else if(a==="scpick"){const T=getScan(V.L.id),q=T.q[V.L.qi];scanAnswer(b.dataset.v===q.a,b.dataset.v)}
-  else if(a==="sctap"){const T=getScan(V.L.id),q=T.q[V.L.qi];scanAnswer(b.dataset.v===q.loc[0]+q.loc[1],b.dataset.v)}
+  else if(a==="scpick"){const T=getScan(V.L.id),q=T.q[scCur(V.L)];scanAnswer(b.dataset.v===q.a,b.dataset.v)}
+  else if(a==="sctap"){const T=getScan(V.L.id),q=T.q[scCur(V.L)];scanAnswer(b.dataset.v===q.loc[0]+q.loc[1],b.dataset.v)}
   else if(a==="scnext")scanNext();
+  else if(a==="scskip")scanSkip();
   else if(a==="off")startOff(b.dataset.t,b.dataset.m);
   else if(a==="offquit"){stopTTS();V={view:"home"};render();window.scrollTo(0,0)}
   else if(a==="oplay"){const O=V.O,t=OBY[O.tid];const lines=V.view==="oLA"?t.LA.extracts[O.ei].script:t[O.m].groups[O.gi].script;O.plays++;const s=document.querySelector(".hero .muted[style*='13px']");playLines(lines,O.rate);if(s)s.textContent="已播放 "+O.plays+" 次（正式考試只播一次）"}
@@ -1391,10 +1416,12 @@ app.addEventListener("submit",ev=>{
   const f=ev.target.dataset.f;
   if(f==="syn"){const A=document.getElementById("syA"),B=document.getElementById("syB");
     const ok=addSyn(A.value,B.value);V.flash=ok?"已加入："+A.value.trim()+" = "+B.value.trim():(A.value.trim()&&B.value.trim()?"這組已經在表裡了。":"兩格都要填。");render();const n=document.getElementById("syA");if(n)n.focus();return}
-  const inp=document.getElementById("ans");if(!inp||!inp.value.trim())return;
+  const inp=document.getElementById("ans");
+  if(f==="scshort"&&inp&&!inp.value.trim()){if(!V.L.blankWarn){V.L.blankWarn=true;render()}else scanAnswer(false,"（空白）");return}
+  if(!inp||!inp.value.trim())return;
   if(f==="wrw"){const O=V.O,W=OBY[O.tid].W,q=Object.assign({mode:"notes"},W.rw[O.ri]),tx=inp.value.trim();O.rwRes[O.ri]={txt:tx,...rwCheck(q,tx)};render();return}
   if(f==="sksum"){const P=SKIM.find(x=>x.id===V.L.id),t=inp.value.trim();V.L.sum={txt:t,...rwCheck({k:P.sum.k,mode:"sum",n:P.paras.join(" ")},t)};render();return}
-  if(f==="scshort"){const T=getScan(V.L.id),q=T.q[V.L.qi];scanAnswer(new RegExp(q.a,"i").test(inp.value),inp.value.trim());return}
+  if(f==="scshort"){const T=getScan(V.L.id),q=T.q[scCur(V.L)];scanAnswer(new RegExp(q.a,"i").test(inp.value),inp.value.trim());return}
   if(f==="rw"){const {q}=cur();V.s.draft=inp.value;V.s.rw={txt:inp.value.trim(),...rwCheck(q,inp.value.trim())};render();return}
   const {q}=cur();V.s.pick=inp.value.trim();grade(q.a.some(x=>norm(x)===norm(inp.value)));
 });
@@ -1408,6 +1435,657 @@ app.addEventListener("change",ev=>{if(ev.target.id==="orate"&&V.O)V.O.rate=+ev.t
 app.addEventListener("input",ev=>{
   if(ev.target.dataset&&ev.target.dataset.la&&V.O){V.O.vals[ev.target.dataset.la]=ev.target.value;return}
   if(ev.target.id==="wtext"&&V.O){V.O.text=ev.target.value;const w=document.getElementById("wc");if(w)w.textContent=wcount(V.O.text);return}if(ev.target.id==="ans"&&ev.target.tagName==="TEXTAREA"&&V.s)V.s.draft=ev.target.value});
+/* ---------- cloud sync (per-user, private) ---------- */
+const SYNC={st:"local",ref:null,ready:false,busy:false,pend:false,t:null,lastPull:0};
+function syncLine(){const m={local:"進度只存在這台裝置",wait:"正在連線同步…",ok:"進度已同步到你的 Claude 帳號，換裝置登入也能接著練",err:"暫時無法同步，進度先存在這台裝置"};
+  return `<p class="note" id="syncst" style="margin:0 0 10px">${SYNC.st==="ok"?"☁ ":""}${m[SYNC.st]||m.local}</p>`}
+function updSync(){const el=document.getElementById("syncst");if(el)el.outerHTML=syncLine()}
+function mergeState(L,R){const out=JSON.parse(JSON.stringify(R));
+  out.box=out.box||{};for(const [k,v] of Object.entries(L.box||{})){const r=out.box[k];if(!r||(v.seen||0)>(r.seen||0))out.box[k]=v}
+  out.syn=Array.isArray(out.syn)?out.syn:[];for(const p of (L.syn||[]))if(!out.syn.some(q=>synKey(q.a,q.b)===synKey(p.a,p.b)))out.syn.push(p);
+  out.custom=Array.isArray(out.custom)?out.custom:[];for(const c of (L.custom||[]))if(!out.custom.some(x=>x.id===c.id))out.custom.push(c);
+  out.lab=out.lab&&typeof out.lab==="object"?out.lab:{};for(const [k,v] of Object.entries(L.lab||{})){const r=out.lab[k];if(!r)out.lab[k]=v;else{const b=Math.max(r.best||0,v.best||0);out.lab[k]=Object.assign({},(L._at||0)>(R._at||0)?Object.assign({},r,v):Object.assign({},v,r),{best:b})}}
+  out.done=Object.assign({},L.done||{},out.done||{});
+  out.total=Math.max(L.total||0,out.total||0);
+  const ls=L.streak||{},rs=out.streak||{};out.streak=(ls.last||"")>(rs.last||"")?ls:(ls.last===rs.last&&(ls.count||0)>(rs.count||0)?ls:rs);
+  if(!out.streak||!out.streak.last)out.streak={last:"",count:0};
+  const lr=L.rlog||{};out.rlog=Object.assign({},out.rlog||{});for(const [d,o] of Object.entries(lr)){const t=out.rlog[d]=Object.assign({},out.rlog[d]||{});for(const [f,n] of Object.entries(o))t[f]=Math.max(t[f]||0,n)}
+  const hs=new Map();[...(Array.isArray(out.rhist)?out.rhist:[]),...(Array.isArray(L.rhist)?L.rhist:[])].forEach(x=>hs.set(x.ts+":"+x.k,x));out.rhist=[...hs.values()].sort((a,b)=>a.ts-b.ts).slice(-600);
+  if(L.plan&&(!out.plan||(L.plan.set||0)>(out.plan.set||0)))out.plan=L.plan;
+  for(const k of Object.keys(L))if(!(k in out))out[k]=L[k];
+  out._at=Math.max(L._at||0,R._at||0);return out}
+const _saveLocal=save;
+save=function(){S._at=Date.now();_saveLocal();schedPush()};
+function schedPush(){if(!SYNC.ready)return;clearTimeout(SYNC.t);SYNC.t=setTimeout(push,2000)}
+function push(){if(!SYNC.ref)return;if(SYNC.busy){SYNC.pend=true;return}SYNC.busy=true;
+  SYNC.ref.set({json:JSON.stringify(S),at:S._at||Date.now()}).then(()=>{SYNC.st="ok"}).catch(()=>{SYNC.st="err"}).finally(()=>{SYNC.busy=false;updSync();if(SYNC.pend){SYNC.pend=false;push()}})}
+async function pull(){if(!SYNC.ref)return;SYNC.lastPull=Date.now();
+  try{const snap=await SYNC.ref.get();let R=null;if(snap.exists){try{R=JSON.parse(snap.data().json)}catch(e){R=null}}
+    if(!R||!R.box){SYNC.st="ok";if(Object.keys(S.box||{}).length||S.syn.length)push();return}
+    const before=JSON.stringify(S),M=mergeState(S,R);
+    for(const k of Object.keys(S))if(!(k in M))delete S[k];Object.assign(S,M);
+    S.syn=Array.isArray(S.syn)?S.syn:[];S.custom=Array.isArray(S.custom)?S.custom:[];S.lab=S.lab&&typeof S.lab==="object"?S.lab:{};
+    S.custom.forEach(mountCustom);_saveLocal();SYNC.st="ok";
+    const after=JSON.stringify(S);if(after!==JSON.stringify(R))push();
+    if(after!==before&&V.view==="home")render();else updSync();
+  }catch(e){SYNC.st="err";updSync()}}
+(async()=>{try{for(let i=0;i<30&&!(window.claude&&window.claude.use);i++)await new Promise(r=>setTimeout(r,100));if(!(window.claude&&window.claude.use))return;SYNC.st="wait";updSync();
+  const [db,user]=await Promise.all([window.claude.use("db"),window.claude.use("user")]);
+  const uid=user?await user.id():null;if(!db||!uid){SYNC.st="local";updSync();return}
+  SYNC.ref=db.doc("data/users/"+uid+"/progress");await pull();SYNC.ready=true;
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"){if(SYNC.t){clearTimeout(SYNC.t);SYNC.t=null;push()}}
+    else if(Date.now()-SYNC.lastPull>15000)pull()});
+}catch(e){SYNC.st="local";updSync()}})();
+/* ---------- Part A: three rules (skim map · keyword hunt · skip & return) ---------- */
+const PAMAP={
+sc_bronch:{A:"Severity: who gets it, symptoms, risk factors",B:"Oxygen and feeding thresholds",C:"Discharge criteria",D:"Parent information leaflet"},
+sc_iron:{A:"Diagnosis: definitions and ferritin",B:"Dosing rules",C:"Monitoring and duration",D:"Safety and poisoning advice"},
+t1:{A:"Prose overview: fracture types and signs",B:"Management steps for limb fractures",C:"Morphine drug protocol (doses, routes)",D:"Plaster backslab technique (numbered steps)"},
+t2:{A:"Contraindications and interactions list",B:"Overdose procedure flowchart",C:"Treatment-line graph",D:"Clinical assessment and history notes"},
+t3:{A:"Burn depth classification",B:"Fluid resuscitation formula",C:"Numbered management steps",D:"Analgesia tables (adult / paediatric)"},
+t4:{A:"Ulcer type comparison table",B:"Tips for applying dressings",C:"Debridement guidance",D:"Dressing types: pros and cons table"},
+t5:{A:"Definition and causes (prose)",B:"Eron severity classification",C:"Antibiotic drug table",D:"Local wound management points"}};
+const PASTOP=new Set("a an the of to in on at for by with from and or is are be been was were what which who whom when where why how does do did can could should would may might must will this that these those it its their there than as if not no any all some your you patient patients text texts according per one two use used using give given taken take has have had begun being after before during while into about how many much more less most least other".split(" "));
+function paSets(){return [...SCAN.map(t=>({id:t.id,key:t.id,title:t.title})),...OFFS.filter(o=>o.RA).map(o=>({id:o.RA.id,key:o.id,title:o.name+" · "+o.RA.title.replace(/^.*?：/,"")}))]}
+const paKey=id=>{const s=paSets().find(x=>x.id===id);return s?s.key:id};
+const paWords=s=>(s.toLowerCase().match(/[a-z0-9][a-z0-9\-\/.%]*/g)||[]).map(w=>w.replace(/[.]+$/,"")).filter(w=>w&&!PASTOP.has(w)&&!/^\d+\.$/.test(w));
+function paKeySet(T,q){const stem=paWords(q.q),txt=T.texts.find(t=>t.k===q.loc[0]),sen=txt&&txt.s?String(txt.s[q.loc[1]]||"").toLowerCase():"";
+  const m=new Set(paWords((q.map&&q.map[0])||""));const out=new Set();
+  stem.forEach(w=>{if(w.length<3&&!/\d/.test(w))return;if(m.has(w)||(sen&&sen.includes(w)&&w.length>=3))out.add(w)});
+  if(!out.size)stem.filter(w=>w.length>=4).forEach(w=>out.add(w));return out}
+function paHub(){const sets=paSets();
+  return header()+`<section class="section"><h2>Part A 三條規則</h2>
+  <div class="para" style="grid-template-columns:1fr">
+   <div class="pcard" style="cursor:default"><span class="label">規則 1 · 先略讀，不要讀</span><b>45 秒地圖</b><span>四篇短文只看 45 秒，然後替每篇說一句「Text A 是藥物表…」。這張地圖會帶你走完接下來的 14 分鐘。</span></div>
+   <div class="pcard" style="cursor:default"><span class="label">規則 2 · 找關鍵字，不要重讀</span><b>關鍵字獵人</b><span>每題先點出 1–2 個內容字（藥名、數字、病名、處置），10 秒內決定在哪一篇，再只讀那一句。兩個答案都像時，選用字最接近題幹的那個：Part A 要照抄原文，不要自己改寫。</span></div>
+   <div class="pcard" style="cursor:default"><span class="label">規則 3 · 跳過再回頭</span><b>40 秒就跳</b><span>限時全套練習中，任何一題超過 40 秒就按「• 加點跳過」，題目會排到最後再回來。永遠要寫答案：空白一定 0 分，用地圖猜一個常常能拿分。</span></div>
+  </div></section>
+  <section class="section"><h2>選一組文本</h2><div style="display:grid;gap:10px">${sets.map(s=>{const r=S.lab["pa_"+s.id]||{},h=S.lab["ph_"+s.id]||{};
+   return `<div class="tx"><h4>${esc(s.title)}</h4><div class="row">
+    <button class="btn" data-a="pamap" data-id="${s.id}">45 秒地圖${r.best!=null?" · 最佳 "+r.best+"/"+r.total:""}</button>
+    <button class="btn" data-a="pahunt" data-id="${s.id}">關鍵字獵人${h.best!=null?" · 最佳 "+h.best+"/"+h.total:""}</button>
+    <button class="btn ghost" data-a="scan" data-id="${s.id}">全套限時（跳過與回頭）</button></div></div>`}).join("")}</div>
+  <div class="row" style="margin-top:14px"><button class="btn primary" data-a="home">回到首頁</button></div></section>`}
+function startPaMap(id){const T=getScan(id),M=PAMAP[paKey(id)]||{};const qs=shuffle(T.q.filter(q=>q.loc)).slice(0,5);
+  const t0=Date.now();V={view:"pamap",P:{id,phase:"look",t0,labels:shuffle(T.texts.map(t=>t.k)),pick:{},sel:null,qs,qi:0,ans:[],done:false}};render();window.scrollTo(0,0);
+  setTimeout(()=>{if(V.view==="pamap"&&V.P.t0===t0&&V.P.phase==="look"){V.P.phase="label";V.P.auto=true;render()}},45000)}
+function paMapView(){const P=V.P,T=getScan(P.id),M=PAMAP[paKey(P.id)]||{};const lab=k=>M[k]||(T.texts.find(t=>t.k===k)||{}).h||k;
+  const top=`<div class="sess-top"><button class="btn ghost" data-a="pahub">結束</button><span class="label" style="flex:1;text-align:center">45 秒地圖 · ${esc(T.title)}</span>${P.phase==="look"?`<span class="clock" data-start="${P.t0}" data-dur="45000">0:45</span>`:""}</div>`;
+  if(P.phase==="look")return top+`<div class="qbar"><span class="label">規則 1</span><p class="qtext">每篇：標題 1 秒 → 小標題 3 秒 → 格式（表格、步驟、衛教單、文章）→ 主題字。不要讀內容。</p><p class="muted" style="margin:0">45 秒一到就收起來，不延長。在心裡說：Text A is a …</p><div><button class="btn primary" data-a="pmgo">我記好了</button></div></div>
+   <div class="texts">${T.texts.map(t=>`<section class="tx ${T.block?"block":""}"><h4><span class="k">${t.k}</span>${esc(t.h)}</h4><div>${(t.s||[]).map(s=>`<span class="sen" style="cursor:default">${esc(s)}</span> `).join("")}</div></section>`).join("")}</div>`;
+  if(P.phase==="label"){const all=T.texts.map(t=>t.k),full=all.every(k=>P.pick[k]);
+   return top+`<div class="qbar"><span class="label">${P.auto?"時間到 · ":""}文本已收起</span><p class="qtext">每一篇是什麼？先點左邊的字母，再點右邊的描述。</p></div>
+   <div class="texts" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div style="display:grid;gap:8px">${all.map(k=>`<button class="btn ${P.sel===k?"primary":""}" data-a="pmsel" data-v="${k}" style="justify-content:flex-start;text-align:left">Text ${k}${P.pick[k]?" → "+esc(lab(P.pick[k])):""}</button>`).join("")}</div>
+   <div style="display:grid;gap:8px">${P.labels.map(k=>{const used=Object.values(P.pick).includes(k);return `<button class="btn ${used?"ghost":""}" data-a="pmlab" data-v="${k}" style="justify-content:flex-start;text-align:left" ${P.sel?"":"disabled"}>${esc(lab(k))}</button>`}).join("")}</div></div>
+   <div class="row" style="margin-top:12px"><button class="btn primary" data-a="pmcheck" ${full?"":"disabled"}>對答案</button></div>`}
+  if(P.phase==="labelres"){const n=T.texts.filter(t=>P.pick[t.k]===t.k).length;
+   return top+`<div class="qbar"><span class="label">你的地圖</span><p class="qtext">${n}/${T.texts.length} 篇標對了</p>
+   <ul class="checks">${T.texts.map(t=>`<li><span class="${P.pick[t.k]===t.k?"y":"n"}">${P.pick[t.k]===t.k?"✓":"✗"}</span><span>Text ${t.k} is ${esc(lab(t.k))}</span></li>`).join("")}</ul>
+   <p class="xp">這四句話就是你的地圖。接下來 ${P.qs.length} 題<b>不能看文本</b>，只靠地圖判斷答案在哪一篇。</p><div><button class="btn primary" data-a="pmq">開始</button></div></div>`}
+  if(P.phase==="q"){const q=P.qs[P.qi],a=P.ans[P.qi];
+   return top+`<div class="qbar"><span class="label">只靠地圖 · ${P.qi+1}/${P.qs.length}</span><p class="qtext">${esc(q.q.replace(/^\d+\.\s*/,""))}</p><p class="muted" style="margin:0">這題的答案會在哪一篇？</p>
+   <div class="letters">${T.texts.map(t=>`<button class="btn ${a!=null&&t.k===q.loc[0]?"primary":""}" data-a="pmans" data-v="${t.k}" ${a!=null?"disabled":""}>${t.k}</button>`).join("")}</div>
+   ${a!=null?`<div class="fb"><div class="verdict ${a?"ok":"no"}">${a?"地圖帶你找到了":"在 Text "+q.loc[0]}</div><p class="xp">Text ${q.loc[0]} is ${esc(lab(q.loc[0]))}。${q.map?"關鍵字對應："+esc(q.map[0])+" ↔ "+esc(q.map[1]):""}</p><div><button class="btn primary" data-a="pmnext" id="nextBtn">${P.qi+1>=P.qs.length?"看結果":"下一題"}</button></div></div>`:""}</div>
+   <div class="texts" style="grid-template-columns:repeat(2,minmax(0,1fr))">${T.texts.map(t=>`<div class="tx"><h4><span class="k">${t.k}</span>${esc(lab(t.k))}</h4></div>`).join("")}</div>`}
+  const nl=T.texts.filter(t=>P.pick[t.k]===t.k).length,nq=P.ans.filter(Boolean).length,r=S.lab["pa_"+P.id]||{};
+  return header()+`<section class="end"><h2>45 秒地圖完成</h2><div class="res"><div><span class="label">標對文本</span><b>${nl}/${T.texts.length}</b></div><div><span class="label">只靠地圖</span><b>${nq}/${P.qs.length}</b></div><div><span class="label">最佳</span><b>${r.best!=null?r.best+"/"+r.total:"—"}</b></div></div>
+  <p class="xp" style="margin-top:14px">${nq>=P.qs.length-1?"地圖很清楚。考試時先花 45 秒建立這張地圖，再直接去做題。":"地圖還不夠準。下次 45 秒內只看標題、表格欄名和第一行，替每篇各說一句話就好。"}</p>
+  <div class="row" style="margin-top:12px"><button class="btn primary" data-a="pahunt" data-id="${P.id}">接著練關鍵字獵人</button><button class="btn" data-a="pamap" data-id="${P.id}">再一次</button><button class="btn ghost" data-a="pahub">回到三條規則</button></div></section>`}
+function startPaHunt(id){const T=getScan(id);const qs=shuffle(T.q.filter(q=>q.loc)).slice(0,8);
+  V={view:"pahunt",P:{id,qs,qi:0,step:"kw",kw:null,kwOk:null,t1:0,res:[]}};render();window.scrollTo(0,0)}
+function paHuntView(){const P=V.P,T=getScan(P.id),M=PAMAP[paKey(P.id)]||{};const lab=k=>M[k]||(T.texts.find(t=>t.k===k)||{}).h||k;
+  const top=`<div class="sess-top"><button class="btn ghost" data-a="pahub">結束</button><span class="label" style="flex:1;text-align:center">關鍵字獵人 · ${esc(T.title)}</span>${P.step==="text"?`<span class="clock" data-start="${P.t1}" data-dur="10000">0:10</span>`:""}<span class="mono">${Math.min(P.qi+1,P.qs.length)}/${P.qs.length}</span></div>`;
+  if(P.qi>=P.qs.length){const n=P.res.length,kw=P.res.filter(r=>r.kw).length,tx=P.res.filter(r=>r.tx).length,avg=P.res.reduce((a,r)=>a+r.ms,0)/Math.max(1,n),fast=P.res.filter(r=>r.ms<=10000).length;
+   return header()+`<section class="end"><h2>關鍵字獵人完成</h2><div class="res"><div><span class="label">關鍵字</span><b>${kw}/${n}</b></div><div><span class="label">選對文本</span><b>${tx}/${n}</b></div><div><span class="label">平均決定時間</span><b>${Math.round(avg/1000)} 秒</b></div></div>
+   <p class="xp" style="margin-top:14px">${fast}/${n} 題在 10 秒內決定好文本。${avg>10000?"太慢的話，通常是在重讀文本。先用 45 秒地圖記住每篇是什麼，再靠關鍵字直接跳過去。":"速度很好。考試時每題只讀關鍵字附近那一句。"}</p>
+   <p class="note">Examiner insight：兩個答案都說得通時，選用字最接近題幹的那一個。Part A 給分看的是照原文抄出來，不是你的改寫。</p>
+   <div class="row" style="margin-top:12px"><button class="btn primary" data-a="scan" data-id="${P.id}">做全套限時（跳過與回頭）</button><button class="btn" data-a="pahunt" data-id="${P.id}">再一次</button><button class="btn ghost" data-a="pahub">回到三條規則</button></div></section>`}
+  const q=P.qs[P.qi],ks=paKeySet(T,q);
+  const stem=esc(q.q.replace(/^\d+\.\s*/,"")).split(/(\s+)/).map(w=>{if(!/\S/.test(w))return w;const n=w.toLowerCase().replace(/^[^a-z0-9]+|[^a-z0-9%]+$/g,"");if(!n||PASTOP.has(n))return w;
+    let c="";if(P.kw){if(ks.has(n))c=" on";if(P.kw===n&&!ks.has(n))c=" miss"}return `<button class="kw${c}" data-a="phkw" data-w="${esc(n)}" ${P.step!=="kw"?"disabled":""} style="font:inherit;border:0;background:${c===" miss"?"var(--red-soft)":""};padding:0 2px">${w}</button>`}).join("");
+  let body="";
+  if(P.step==="kw")body=`<p class="muted" style="margin:0">第 1 步：點出這題的關鍵字（藥名、數字、病名、處置）。</p>`;
+  if(P.step==="text")body=`<p class="muted" style="margin:0">${P.kwOk?"✓ 好的關鍵字。":"這個字太籠統，標黃的才是能帶你找到答案的字。"}第 2 步：10 秒內決定在哪一篇。</p><div class="letters">${T.texts.map(t=>`<button class="btn" data-a="phtx" data-v="${t.k}">${t.k}</button>`).join("")}</div>`;
+  if(P.step==="fb"){const r=P.res[P.res.length-1],txt=T.texts.find(t=>t.k===q.loc[0]),sen=txt&&txt.s?txt.s[q.loc[1]]:"";
+   body=`<div class="fb"><div class="verdict ${r.tx?"ok":"no"}">${r.tx?"找對了":"在 Text "+q.loc[0]} · ${Math.round(r.ms/1000)} 秒</div>
+   <div class="tx hit"><h4><span class="k">${q.loc[0]}</span>${esc(lab(q.loc[0]))}</h4><div><span class="sen hit">${esc(sen||"（見原版版面）")}</span></div></div>
+   ${q.show||q.a?`<p class="xp">答案：<b>${esc(q.t==="match"?"Text "+q.a:q.show||"")}</b>${q.map?"　關鍵字對應：<code>"+esc(q.map[0])+"</code> ↔ <code>"+esc(q.map[1])+"</code>":""}</p>`:""}
+   ${q.map?synBtnFor(q.map[0],q.map[1]):""}<div><button class="btn primary" data-a="phnext" id="nextBtn">${P.qi+1>=P.qs.length?"看結果":"下一題"}</button></div></div>`}
+  return top+`<div class="qbar"><span class="label">規則 2 · 找關鍵字</span><p class="qtext">${stem}</p>${body}</div>
+  ${P.step!=="fb"?`<div class="texts" style="grid-template-columns:repeat(2,minmax(0,1fr))">${T.texts.map(t=>`<div class="tx"><h4><span class="k">${t.k}</span>${esc(lab(t.k))}</h4></div>`).join("")}</div>`:""}`}
+function paClick(a,b){
+  if(a==="pahub"){V={view:"pahub"};render();window.scrollTo(0,0);return true}
+  if(a==="pamap"){startPaMap(b.dataset.id);return true}
+  if(a==="pahunt"){startPaHunt(b.dataset.id);return true}
+  const P=V.P;if(!P)return false;
+  if(a==="pmgo"){P.phase="label";render();return true}
+  if(a==="pmsel"){P.sel=b.dataset.v;render();return true}
+  if(a==="pmlab"){if(!P.sel)return true;for(const k in P.pick)if(P.pick[k]===b.dataset.v)delete P.pick[k];P.pick[P.sel]=b.dataset.v;const T=getScan(P.id);P.sel=T.texts.map(t=>t.k).find(k=>!P.pick[k])||null;render();return true}
+  if(a==="pmcheck"){P.phase="labelres";render();return true}
+  if(a==="pmq"){P.phase="q";render();return true}
+  if(a==="pmans"){if(P.ans[P.qi]!=null)return true;P.ans[P.qi]=b.dataset.v===P.qs[P.qi].loc[0];render();return true}
+  if(a==="pmnext"){P.qi++;if(P.qi>=P.qs.length){const T=getScan(P.id),score=T.texts.filter(t=>P.pick[t.k]===t.k).length+P.ans.filter(Boolean).length,tot=T.texts.length+P.qs.length,r=S.lab["pa_"+P.id]||{};
+     r.last=score;r.total=tot;r.best=Math.max(r.best||0,score);S.lab["pa_"+P.id]=r;touchStreak();save();P.phase="end"}render();window.scrollTo(0,0);return true}
+  if(a==="phkw"){if(P.step!=="kw")return true;const T=getScan(P.id);P.kw=b.dataset.w;P.kwOk=paKeySet(T,P.qs[P.qi]).has(P.kw);P.step="text";P.t1=Date.now();render();return true}
+  if(a==="phtx"){if(P.step!=="text")return true;const q=P.qs[P.qi];P.res.push({kw:P.kwOk,tx:b.dataset.v===q.loc[0],ms:Date.now()-P.t1});P.step="fb";render();return true}
+  if(a==="phnext"){P.qi++;P.step="kw";P.kw=null;P.kwOk=null;if(P.qi>=P.qs.length){const n=P.res.length,sc=P.res.filter(r=>r.kw&&r.tx).length,r=S.lab["ph_"+P.id]||{};r.last=sc;r.total=n;r.best=Math.max(r.best||0,sc);S.lab["ph_"+P.id]=r;touchStreak();save()}render();window.scrollTo(0,0);return true}
+  return false}
+/* ---------- Reading system: extra self-written Part A sets + drill banks ---------- */
+SCAN.push(
+{id:"sc_asthma",title:"Asthma in children",block:true,texts:[
+{k:"A",h:"Salbutamol and prednisolone doses in children",fmt:"table",s:[
+"Age 1–5 years | Salbutamol MDI with spacer: 6 puffs (100 micrograms per puff) | Prednisolone: 1–2 mg/kg once daily (maximum 20 mg)",
+"Age 6–11 years | Salbutamol MDI with spacer: 12 puffs | Prednisolone: 1–2 mg/kg once daily (maximum 40 mg)",
+"Age 12 years and over | Salbutamol MDI with spacer: 12 puffs | Prednisolone: 40–50 mg once daily",
+"Duration of oral steroid: usually 3 days; up to 5 days if the child is slow to respond.",
+"Nebulised salbutamol (2.5 mg under 5 years; 5 mg from 5 years) is reserved for children who need oxygen."]},
+{k:"B",h:"Acute exacerbation: emergency department protocol",fmt:"steps",s:[
+"1. Assess severity: SpO2, ability to talk, respiratory rate and use of accessory muscles.",
+"2. Give oxygen if SpO2 is below 92% in air.",
+"3. Give salbutamol via spacer every 20 minutes for the first hour.",
+"4. Add ipratropium bromide to the first three doses if the response is poor.",
+"5. Consider intravenous magnesium sulfate only when there is no response to inhaled therapy.",
+"6. Observe for at least 3 hours after the last salbutamol dose before discharge."]},
+{k:"C",h:"Using your child's inhaler with a spacer",fmt:"leaflet",s:[
+"Shake the inhaler and fit it into the end of the spacer.",
+"Place the mask firmly over your child's nose and mouth, or the mouthpiece between the teeth for older children.",
+"Press the inhaler once and let your child take six slow breaths before the next puff.",
+"Wash the spacer once a month in warm soapy water and leave it to drip dry; do not rub it with a cloth.",
+"Replace the spacer every 12 months."]},
+{k:"D",h:"Clinical update: monitoring chronic asthma",fmt:"prose",s:[
+"Children with asthma should have a structured review at least once a year, and four to six weeks after any change in treatment.",
+"Symptom control is best assessed with a validated questionnaire rather than by simply asking how the asthma is.",
+"Night-time waking more than once a week suggests that control is inadequate.",
+"Spirometry can be performed reliably from about five years of age, although many younger children cannot produce consistent results.",
+"Before increasing preventer therapy, clinicians should check inhaler technique and adherence, unless the child has had a life-threatening attack."]}],
+q:[
+{t:"match",q:"Which text should you use to explain to a parent how to clean a spacer?",a:"C",loc:["C",3],map:["clean","wash"],x:"clean 對應 wash。衛教單（leaflet）是給家長的文本。"},
+{t:"match",q:"Which text tells you when magnesium sulfate should be considered?",a:"B",loc:["B",4],map:["when … considered","consider … only when"],x:"藥物使用時機在處置流程（protocol）裡。注意 only when：這是條件，不是常規。"},
+{t:"match",q:"Which text gives the maximum oral steroid dose for a nine-year-old?",a:"A",loc:["A",1],map:["nine-year-old","6–11 years"],x:"劑量看表格；九歲落在 6–11 years 那一列。"},
+{t:"match",q:"Which text explains how often children with asthma should be reviewed?",a:"D",loc:["D",0],map:["how often","at least once a year"],x:"monitoring／review 在 clinical update。"},
+{t:"match",q:"Which text describes how many breaths a child should take between puffs?",a:"C",loc:["C",2],map:["between puffs","before the next puff"],x:"吸入技巧在衛教單。"},
+{t:"short",q:"What is the maximum daily prednisolone dose for a four-year-old? (mg)",a:"^\\s*20\\s*(mg)?\\s*$",show:"20",lim:1,loc:["A",0],map:["four-year-old","1–5 years"],x:"題目已給 (mg)，只寫 20。"},
+{t:"short",q:"Below what oxygen saturation should oxygen be given?",a:"92",show:"92%",loc:["B",1],map:["below what","below 92%"],x:"數字要連 % 一起寫，比較保險。"},
+{t:"short",q:"How often should salbutamol be given during the first hour?",a:"20\\s*min",show:"every 20 minutes",loc:["B",2],map:["how often","every 20 minutes"],x:"問 how often 就寫頻率：every 20 minutes。"},
+{t:"short",q:"How long should a child be observed after the last salbutamol dose before going home?",a:"(3|three)\\s*h",show:"3 hours",loc:["B",5],map:["going home","before discharge"],x:"going home 對應 discharge。"},
+{t:"short",q:"From about what age can spirometry be performed reliably?",a:"(5|five)",show:"five years",loc:["D",3],map:["from about what age","from about five years of age"],x:"although 後面是例外：較小的孩子常做不穩定。"},
+{t:"short",q:"How often should a spacer be replaced?",a:"12\\s*months|year|annual",show:"every 12 months",loc:["C",4],map:["replaced","replace"],x:"掃讀 replace 和數字。"},
+{t:"tap",q:"Find the situation in which preventer therapy may be increased without first checking inhaler technique.",loc:["D",4],map:["without first checking","unless"],x:"unless 帶出例外：曾有危及生命的發作時，不必先檢查技巧。"},
+{t:"short",q:"What dose of nebulised salbutamol is used for a three-year-old? (mg)",a:"^\\s*2\\.5\\s*(mg)?\\s*$",show:"2.5",lim:1,loc:["A",4],map:["three-year-old","under 5 years"],x:"題目已給 (mg)，只寫 2.5。"}]},
+{id:"sc_gastro",title:"Gastroenteritis and dehydration",block:true,texts:[
+{k:"A",h:"Clinical assessment of dehydration",fmt:"table",s:[
+"No clinically detectable dehydration | Alert | Normal eyes | Normal skin turgor | Capillary refill under 2 seconds",
+"Clinical dehydration | Irritable or lethargic | Sunken eyes | Reduced skin turgor | Tachycardia",
+"Clinical shock | Decreased level of consciousness | Pale or mottled skin | Cold extremities | Capillary refill over 2 seconds",
+"Infants under 1 year, especially those under 6 months, are at increased risk of dehydration.",
+"Stopping breastfeeding during the illness is a further risk factor."]},
+{k:"B",h:"Oral rehydration protocol",fmt:"steps",s:[
+"1. Give 50 mL/kg of oral rehydration solution (ORS) over 4 hours for clinical dehydration.",
+"2. Give ORS frequently and in small amounts, for example 5 mL every 1–2 minutes by syringe.",
+"3. Continue breastfeeding throughout rehydration.",
+"4. Consider nasogastric ORS if the child persistently vomits or refuses to drink.",
+"5. Use intravenous fluids if shock is suspected or confirmed, or if the child deteriorates despite oral rehydration.",
+"6. After rehydration, reintroduce the usual diet; avoid fruit juices and carbonated drinks until the diarrhoea has stopped."]},
+{k:"C",h:"Ondansetron: drug information",fmt:"table",s:[
+"Indication | Single dose for vomiting in children aged 6 months and over with mild to moderate dehydration",
+"Dose (orally dispersible tablet) | 8–15 kg: 2 mg; 15–30 kg: 4 mg; over 30 kg: 8 mg",
+"Contraindication | Congenital long QT syndrome",
+"Caution | Other QT-prolonging drugs; electrolyte disturbance",
+"Common adverse effects | Headache, constipation; may increase diarrhoea"]},
+{k:"D",h:"Caring for your child with diarrhoea and vomiting at home",fmt:"leaflet",s:[
+"Most children get better within a week: diarrhoea usually stops within 5 to 7 days and vomiting within 3 days.",
+"Give small sips of fluid often, even if your child is still vomiting.",
+"Keep your child away from nursery or school until 48 hours after the last episode of diarrhoea or vomiting.",
+"Wash hands with soap and water; alcohol gels do not kill all the germs that cause gastroenteritis.",
+"Seek urgent help if your child becomes drowsy, passes no urine for 12 hours, or has green vomit."]}],
+q:[
+{t:"match",q:"Which text tells you which children are more likely to become dehydrated?",a:"A",loc:["A",3],map:["more likely","at increased risk"],x:"more likely 對應 increased risk。"},
+{t:"match",q:"Which text explains when a child can go back to school?",a:"D",loc:["D",2],map:["go back to school","keep … away … until"],x:"返校建議是給家長的：衛教單。"},
+{t:"match",q:"Which text gives the dose of an anti-emetic according to body weight?",a:"C",loc:["C",1],map:["anti-emetic","ondansetron (for vomiting)"],x:"anti-emetic＝止吐藥；藥物資訊表依體重給劑量。"},
+{t:"match",q:"Which text describes what to do in hospital if a child keeps vomiting the ORS?",a:"B",loc:["B",3],map:["keeps vomiting","persistently vomits"],x:"keeps 對應 persistently。"},
+{t:"match",q:"Which text lists signs that distinguish shock from dehydration?",a:"A",loc:["A",2],map:["signs … distinguish","clinical shock (row)"],x:"比較不同程度的表格。"},
+{t:"short",q:"What volume of ORS should be given for clinical dehydration? (mL/kg)",a:"^\\s*50\\s*(ml\\/kg)?\\s*$",show:"50",lim:1,loc:["B",0],map:["volume","50 mL/kg"],x:"題目已給 (mL/kg)，只寫 50。"},
+{t:"short",q:"Over how many hours should this volume be given?",a:"\\b(4|four)\\b",show:"4 hours",loc:["B",0],map:["over how many hours","over 4 hours"],x:"同一句的第二個數字。"},
+{t:"short",q:"What dose of ondansetron should a 12 kg child receive?",a:"\\b2\\s*mg",show:"2 mg",loc:["C",1],map:["12 kg","8–15 kg"],x:"表格先找體重區間，再讀同一格。"},
+{t:"short",q:"Which inherited heart condition means ondansetron must not be given?",a:"long\\s*qt",show:"long QT syndrome",loc:["C",2],map:["must not be given","contraindication"],x:"inherited 對應 congenital；must not be given 對應 contraindication。"},
+{t:"short",q:"Which drinks should be avoided until the diarrhoea has stopped? (one is enough)",a:"juice|carbonated|fizzy",show:"fruit juices",loc:["B",5],map:["avoided","avoid"],x:"until 是時間條件：腹瀉停止前避免。"},
+{t:"short",q:"Within how many days does vomiting usually stop?",a:"\\b(3|three)\\b",show:"3 days",loc:["D",0],map:["usually stop","usually stops within"],x:"同一句有 5 to 7 days（腹瀉）和 3 days（嘔吐），要看主詞。"},
+{t:"tap",q:"Find the reason why alcohol hand gel alone is not enough.",loc:["D",3],map:["not enough","do not kill all the germs"],x:"原因藏在分號後面。"},
+{t:"short",q:"After how many hours without urine should parents seek urgent help?",a:"\\b12\\b",show:"12 hours",loc:["D",4],map:["without urine","passes no urine"],x:"不確定要不要加單位時，加上 hours 比較保險。"}]},
+{id:"sc_jaund",title:"Neonatal jaundice",block:true,texts:[
+{k:"A",h:"Phototherapy thresholds for term babies (38 weeks or more)",fmt:"table",s:[
+"Age 24 hours | Start phototherapy at bilirubin 200 micromol/L | Exchange transfusion at 350 micromol/L",
+"Age 48 hours | Phototherapy 250 micromol/L | Exchange transfusion 450 micromol/L",
+"Age 72 hours | Phototherapy 300 micromol/L | Exchange transfusion 450 micromol/L",
+"Age 96 hours and over | Phototherapy 350 micromol/L | Exchange transfusion 450 micromol/L",
+"Use the lower-threshold chart for babies born before 38 weeks."]},
+{k:"B",h:"Investigations for jaundice in the first 24 hours",fmt:"list",s:[
+"Jaundice that appears within 24 hours of birth must always be treated as pathological.",
+"Measure serum bilirubin urgently, within 2 hours.",
+"Request blood group and direct antiglobulin test (DAT) for mother and baby.",
+"Request a full blood count and blood film to look for haemolysis.",
+"Consider G6PD levels, taking into account ethnic origin and family history.",
+"Do not use a transcutaneous bilirubinometer in this group."]},
+{k:"C",h:"Nursing care during phototherapy",fmt:"steps",s:[
+"Place the baby on its back, unclothed except for a nappy, under the light source.",
+"Protect the eyes with eye shields and check them regularly for discharge.",
+"Interrupt phototherapy for feeds of up to 30 minutes; do not interrupt if bilirubin is approaching the exchange level.",
+"Repeat bilirubin 4–6 hours after starting, then every 6–12 hours once levels are stable or falling.",
+"Stop phototherapy when bilirubin is more than 50 micromol/L below the threshold, and check for rebound 12–18 hours later."]},
+{k:"D",h:"Jaundice in newborn babies: information for parents",fmt:"leaflet",s:[
+"Jaundice is common and usually harmless; it often appears on day 2 or 3 and fades within two weeks.",
+"Feed your baby often, at least 8 to 12 times every 24 hours.",
+"Putting your baby in sunlight is not a safe treatment for jaundice.",
+"Contact your midwife if your baby's stools are pale or chalky, or the urine is dark.",
+"Jaundice that lasts longer than 14 days in a term baby needs a check-up."]}],
+q:[
+{t:"match",q:"Which text tells you how to protect the baby's eyes?",a:"C",loc:["C",1],map:["protect … eyes","eye shields"],x:"照護步驟在護理流程。"},
+{t:"match",q:"Which text tells you what tests to order for a baby who is yellow on the first day?",a:"B",loc:["B",0],map:["on the first day","within 24 hours of birth"],x:"yellow 對應 jaundice；first day 對應 24 hours。"},
+{t:"match",q:"Which text advises against treating jaundice with natural light?",a:"D",loc:["D",2],map:["natural light","sunlight"],x:"advise against 對應 not a safe treatment。"},
+{t:"match",q:"Which text gives the bilirubin level at which an exchange transfusion is needed?",a:"A",loc:["A",0],map:["level … needed","exchange transfusion at"],x:"數值門檻看表格。"},
+{t:"match",q:"Which text tells you how often to recheck bilirubin?",a:"C",loc:["C",3],map:["recheck","repeat bilirubin"],x:"recheck 對應 repeat。"},
+{t:"short",q:"At what bilirubin level should phototherapy start for a term baby aged 48 hours? (micromol/L)",a:"^\\s*250\\s*(micromol\\/l)?\\s*$",show:"250",lim:1,loc:["A",1],map:["start","phototherapy 250"],x:"題目已給單位，只寫 250。"},
+{t:"short",q:"Within what time should serum bilirubin be measured when jaundice appears on day 1?",a:"(2|two)\\s*h",show:"(within) 2 hours",loc:["B",1],map:["within what time","within 2 hours"],x:"問時間就寫時間，含單位。"},
+{t:"short",q:"Which device should not be used to measure bilirubin in this group?",a:"transcutaneous",show:"transcutaneous bilirubinometer",loc:["B",5],map:["should not be used","do not use"],x:"拼字要照原文。"},
+{t:"short",q:"What is the longest time a feed may interrupt phototherapy?",a:"\\b30\\b",show:"30 minutes",loc:["C",2],map:["longest time","up to 30 minutes"],x:"up to＝最長。"},
+{t:"short",q:"When should bilirubin be checked for rebound after phototherapy is stopped?",a:"12\\s*(-|–|to)\\s*18",show:"12–18 hours later",loc:["C",4],map:["after … stopped","later"],x:"rebound 是關鍵字；答案是時間區間。"},
+{t:"short",q:"What is the minimum number of feeds a baby should have in 24 hours?",a:"^\\s*(8|eight)\\b",show:"8",loc:["D",1],map:["minimum","at least 8"],x:"minimum 對應 at least，只寫下限。"},
+{t:"short",q:"After how many days does jaundice in a term baby need a medical review?",a:"\\b14\\b",show:"14 days",loc:["D",4],map:["medical review","check-up"],x:"longer than 14 days。"},
+{t:"tap",q:"Find the situation in which phototherapy should not be paused for a feed.",loc:["C",2],map:["should not be paused","do not interrupt if"],x:"分號後面是條件：bilirubin 接近換血值時不要中斷。"}]},
+{id:"sc_ana",title:"Anaphylaxis in children",block:true,texts:[
+{k:"A",h:"Intramuscular adrenaline (1 mg/mL) doses",fmt:"table",s:[
+"Under 6 months | 0.1 mL (100 micrograms)",
+"6 months to 5 years | 0.15 mL (150 micrograms)",
+"6–11 years | 0.3 mL (300 micrograms)",
+"12 years and over | 0.5 mL (500 micrograms)",
+"Repeat after 5 minutes if there is no improvement.",
+"Inject into the anterolateral thigh."]},
+{k:"B",h:"Emergency management of anaphylaxis",fmt:"steps",s:[
+"1. Call for help and remove the trigger if possible.",
+"2. Lie the patient flat with legs raised; allow the patient to sit up if breathing is difficult.",
+"3. Give intramuscular adrenaline immediately; do not wait for intravenous access.",
+"4. Give high-flow oxygen, and a 10 mL/kg crystalloid bolus if there is circulatory compromise.",
+"5. If there is no improvement after two doses of intramuscular adrenaline, start an adrenaline infusion with senior support.",
+"6. Antihistamines are not first-line treatment and should be given only after the patient is stabilised."]},
+{k:"C",h:"Using an adrenaline auto-injector: advice for families",fmt:"leaflet",s:[
+"Carry two auto-injectors at all times.",
+"Remove the safety cap and press the tip firmly into the outer thigh, through clothing if necessary.",
+"Hold it in place for 3 seconds, then massage the area for 10 seconds.",
+"Call an ambulance after using the auto-injector, even if your child seems better.",
+"Check the expiry date regularly and replace the device before it expires."]},
+{k:"D",h:"Observation and discharge after anaphylaxis",fmt:"prose",s:[
+"Biphasic reactions, in which symptoms return without further exposure to the trigger, occur in a small proportion of patients.",
+"For this reason, children should be observed for at least 6 hours after symptoms resolve, or 12 hours if they needed two doses of adrenaline.",
+"Mast cell tryptase should be measured as soon as possible after treatment, and again 1–2 hours later.",
+"All children should be referred to an allergy specialist before discharge.",
+"Children with asthma are at higher risk of severe reactions, so asthma control should be reviewed."]}],
+q:[
+{t:"match",q:"Which text tells you how long to keep an auto-injector pressed against the leg?",a:"C",loc:["C",2],map:["keep … pressed","hold it in place"],x:"家屬使用說明：衛教單。"},
+{t:"match",q:"Which text explains why children are kept in hospital after their symptoms settle?",a:"D",loc:["D",0],map:["why … kept in hospital","biphasic reactions … for this reason"],x:"why 要找原因：For this reason 指回上一句。"},
+{t:"match",q:"Which text tells you when antihistamines may be given?",a:"B",loc:["B",5],map:["when … may be given","only after … stabilised"],x:"only after 是條件。"},
+{t:"match",q:"Which text gives the adrenaline volume for a teenager?",a:"A",loc:["A",3],map:["teenager","12 years and over"],x:"劑量看表格。"},
+{t:"match",q:"Which text tells families how many devices to carry?",a:"C",loc:["C",0],map:["how many devices","two auto-injectors"],x:"devices 對應 auto-injectors。"},
+{t:"short",q:"What volume of adrenaline 1 mg/mL is given to a three-year-old? (mL)",a:"^\\s*0?\\.15\\s*(ml)?\\s*$",show:"0.15",lim:1,loc:["A",1],map:["three-year-old","6 months to 5 years"],x:"題目已給 (mL)，只寫 0.15。"},
+{t:"short",q:"After how many minutes can the adrenaline dose be repeated?",a:"\\b(5|five)\\b",show:"5 minutes",loc:["A",4],map:["can … be repeated","repeat after"],x:"if there is no improvement 是重複的條件。"},
+{t:"short",q:"What volume of fluid bolus is given for circulatory compromise? (mL/kg)",a:"^\\s*10\\s*(ml\\/kg)?\\s*$",show:"10",lim:1,loc:["B",3],map:["fluid bolus","crystalloid bolus"],x:"題目已給 (mL/kg)，只寫 10。"},
+{t:"short",q:"What should be started if two intramuscular doses have not worked?",a:"infusion",show:"(an) adrenaline infusion",loc:["B",4],map:["have not worked","no improvement after two doses"],x:"if 帶出條件，答案是條件成立後要做的事。"},
+{t:"short",q:"What is the minimum observation period after two doses of adrenaline?",a:"\\b12\\b",show:"12 hours",loc:["D",1],map:["minimum observation","observed for at least … or 12 hours if"],x:"同一句有 6 和 12：題目條件是 two doses，所以是 12。"},
+{t:"short",q:"When should the second tryptase sample be taken?",a:"1\\s*(-|–|to)\\s*2\\s*h",show:"1–2 hours later",loc:["D",2],map:["second … sample","again … later"],x:"again 對應 second。"},
+{t:"tap",q:"Find the reason why asthma control should be reviewed.",loc:["D",4],map:["reason","so"],x:"so 連接原因和結果：氣喘的孩子嚴重反應的風險較高。"},
+{t:"short",q:"Which kind of specialist should all children be referred to?",a:"allerg",show:"(an) allergy specialist",loc:["D",3],map:["referred to","referred to"],x:"照原文用字：allergy specialist。"}]}
+);
+Object.assign(PAMAP,{
+sc_asthma:{A:"Dose table: salbutamol and prednisolone by age",B:"Step-by-step ED protocol for acute attacks",C:"Patient leaflet on inhaler and spacer technique",D:"Clinical update on monitoring chronic asthma"},
+sc_gastro:{A:"Dehydration assessment table",B:"Step-by-step oral rehydration protocol",C:"Ondansetron drug information table",D:"Parent leaflet for care at home"},
+sc_jaund:{A:"Phototherapy threshold table by age",B:"List of investigations for early jaundice",C:"Nursing steps during phototherapy",D:"Parent information leaflet"},
+sc_ana:{A:"Adrenaline dose table by age",B:"Step-by-step emergency management",C:"Family leaflet on auto-injector use",D:"Prose on observation and discharge"}});
+const FMTS={table:"表格",steps:"步驟流程",list:"條列",leaflet:"衛教單",prose:"文章",graph:"圖表"};
+const FMTMAP={sc_bronch:{A:"list",B:"list",C:"list",D:"leaflet"},sc_iron:{A:"list",B:"list",C:"list",D:"leaflet"},
+t1:{A:"prose",B:"steps",C:"table",D:"steps"},t2:{A:"list",B:"steps",C:"graph",D:"list"},t3:{A:"table",B:"list",C:"steps",D:"table"},t4:{A:"table",B:"list",C:"prose",D:"table"},t5:{A:"prose",B:"table",C:"table",D:"list"}};
+const textFmt=(setId,t)=>t.fmt||((FMTMAP[paKey(setId)]||{})[t.k])||"list";
+/* logic relations */
+const LOGIC=[
+{rel:"條件",w:["only if","only when","provided that","provided","as long as","if"]},
+{rel:"例外",w:["unless","except","apart from","other than"]},
+{rel:"對比",w:["however","although","though","whereas","despite","in spite of","but","yet","rather than"]},
+{rel:"因果",w:["because","due to","as a result","therefore","for this reason","so that","so","since"]},
+{rel:"順序",w:["until","before","after","once","then"]}];
+const LOGRE=new RegExp("\\b("+LOGIC.flatMap(g=>g.w).sort((a,b)=>b.length-a.length).map(w=>w==="once"?"once(?!\\s+(?:daily|a\\s|per|weekly|monthly|every|only))":w.replace(/ /g,"\\s+")).join("|")+")\\b","gi");
+function logicRel(w){w=w.toLowerCase().replace(/\s+/g," ");const g=LOGIC.find(g=>g.w.includes(w));return g?g.rel:""}
+function logicHL(s){return esc(s).replace(LOGRE,m=>`<mark class="lg" title="${logicRel(m)}">${m}</mark><sup class="lgt">${logicRel(m)}</sup>`)}
+const LITEMS=[
+{s:"Antibiotics are not routinely recommended for acute otitis media unless the child is under 2 years old with infection in both ears.",w:"unless",rel:"例外",o:["Most children with otitis media do not need antibiotics.","Antibiotics are routinely recommended for acute otitis media.","Children under 2 years should not receive antibiotics."],x:"第二個選項和原文重複最多字，但漏了 not 和 unless，意思完全相反。"},
+{s:"Codeine is contraindicated in children under 12 years of age.",w:"contraindicated",rel:"否定字首",o:["Codeine should not be given to an eight-year-old.","Codeine is indicated for children under 12.","Codeine is recommended only for children under 12."],x:"contra- 是否定字首：contraindicated＝不可使用。"},
+{s:"Although fever is distressing for parents, it is rarely harmful in itself.",w:"although",rel:"對比",o:["Fever itself seldom causes harm, even though it worries parents.","Fever is distressing and harmful for children.","Parents are rarely distressed by fever."],x:"although 前後是對比：讓人擔心 vs 很少有害。"},
+{s:"Infants should be weighed daily until they regain their birth weight.",w:"until",rel:"順序",o:["Daily weighing can stop once birth weight is regained.","Infants should be weighed daily after they regain their birth weight.","Infants should be weighed once their birth weight is known."],x:"until 標出停止的時間點。"},
+{s:"The vaccine may be given to children with egg allergy, except those who have had anaphylaxis to egg.",w:"except",rel:"例外",o:["Most children with egg allergy can have the vaccine.","Children with egg allergy should not have the vaccine.","Only children with anaphylaxis to egg may have the vaccine."],x:"except 只排除一小群；主規則是可以打。"},
+{s:"Oral iron should be continued for three months after the haemoglobin has returned to normal.",w:"after",rel:"順序",o:["Treatment goes on for three months beyond the point when haemoglobin normalises.","Oral iron should be stopped when haemoglobin returns to normal.","Haemoglobin returns to normal after three months of oral iron."],x:"after 標出起算點：Hb 正常之後再三個月。第三個選項和原文用字最像，但把順序搞錯了。"},
+{s:"Because neonates have immature liver enzymes, some drugs accumulate and doses must be reduced.",w:"because",rel:"因果",o:["Dose reduction is needed as newborn livers process some drugs less efficiently.","Some drugs damage the liver enzymes of neonates.","Doses must be reduced because neonates accumulate liver enzymes."],x:"because 帶出原因：肝酵素不成熟 → 藥物蓄積 → 減量。"},
+{s:"Lumbar puncture should be performed only when the child is clinically stable.",w:"only when",rel:"條件",o:["Lumbar puncture should be delayed in a child who is unstable.","Lumbar puncture makes the child clinically stable.","Clinically stable children should always have a lumbar puncture."],x:"only when 是必要條件，不是建議一定要做。"},
+{s:"Despite normal blood tests, the child should be reviewed if symptoms persist.",w:"despite",rel:"對比",o:["Normal results do not remove the need for review when symptoms continue.","Normal blood tests mean that review is unnecessary.","Children with abnormal blood tests should be reviewed."],x:"despite＝即使。重點在後半句。"},
+{s:"The rash is non-blanching, which suggests a serious cause.",w:"non-blanching",rel:"否定字首",o:["The rash does not fade when pressed, which is a worrying sign.","The rash fades with pressure, so it is not serious.","A blanching rash suggests a serious cause."],x:"non- 把 blanching 反過來：壓了不會退色。"},
+{s:"Paracetamol may be given every 4–6 hours, provided that no more than four doses are given in 24 hours.",w:"provided that",rel:"條件",o:["Repeated doses are allowed as long as the daily limit of four is respected.","Paracetamol must be given every 4 hours for 24 hours.","Four doses of paracetamol should be given every 4–6 hours."],x:"provided that＝只要符合條件。"},
+{s:"Weight loss of up to 10% in the first week is normal; however, a greater loss requires a feeding assessment.",w:"however",rel:"對比",o:["A loss above 10% in week one should prompt a feeding review.","Any weight loss in the first week needs a feeding assessment.","A loss of 10% in the first week is abnormal."],x:"however 之後才是重點：超過 10% 才需要評估。"},
+{s:"Children with mild croup can be managed at home, whereas those with stridor at rest need admission.",w:"whereas",rel:"對比",o:["Stridor at rest is a reason to admit a child with croup.","All children with croup need admission.","Children with mild croup should be admitted if they have stridor."],x:"whereas 對比兩群人。"},
+{s:"Atypical symptoms are common in infants, so a urine test should be performed in any unexplained fever.",w:"atypical",rel:"否定字首",o:["Infants often lack the usual signs, so urine should be tested when the cause of fever is unclear.","Infants usually have typical urinary symptoms.","A urine test is needed only when typical symptoms are present."],x:"a- 否定字首：atypical＝不典型。so 帶出結果。"},
+{s:"The drug should be stopped if the ALT rises to more than three times the upper limit of normal.",w:"if",rel:"條件",o:["A large ALT rise is a reason to discontinue the drug.","ALT should rise to three times normal before starting the drug.","The drug causes the ALT to triple."],x:"if 帶出停藥的條件。"},
+{s:"Once the child is tolerating oral fluids, intravenous fluids can be reduced.",w:"once",rel:"順序",o:["IV fluids can be cut back after oral intake is established.","IV fluids should be reduced before oral fluids are started.","Oral fluids cannot be given with IV fluids."],x:"once＝一旦…之後。"}];
+const SUMM=[
+{h:"Fever in infants",p:"Infants under three months with a temperature of 38°C or higher should be assessed urgently, because serious bacterial infection is more common in this age group. However, fever height alone is a poor predictor of serious illness in older children. Antipyretics may be used for comfort, but they should not be given with the sole aim of reducing temperature.",m:"Babies under three months with fever of 38°C or more need urgent assessment because serious infection is more likely, although in older children the height of the fever does not reliably predict serious illness. Antipyretics are for comfort, not just to lower the temperature."},
+{h:"Bronchiolitis feeding",p:"Most infants with bronchiolitis can continue oral feeding. Nasogastric feeding should be considered only when oral intake falls below 50% of normal. Intravenous fluids are used if the infant cannot tolerate nasogastric feeds or is in impending respiratory failure.",m:"Most infants with bronchiolitis keep feeding by mouth, and nasogastric feeding is used only when intake drops below half of normal. IV fluids are given if nasogastric feeds are not tolerated or respiratory failure is near."},
+{h:"Head injury imaging",p:"CT of the head is not required for most children with minor head injury. It is recommended within one hour if the child has a GCS below 14 on assessment, unless the reduced GCS is explained by recent seizure activity and the child is improving. Observation for four hours is an alternative when only one lower-risk feature is present.",m:"Most minor head injuries in children do not need CT, but a GCS below 14 calls for CT within one hour unless a recent seizure explains it and the child is improving. If only one lower-risk feature is present, four hours of observation is an alternative."},
+{h:"Iron supplementation",p:"Oral iron is the first-line treatment for iron deficiency anaemia in children. Intravenous iron is reserved for children who cannot tolerate oral preparations, despite adequate trials of different formulations. In either case, treatment should continue until stores are replenished.",m:"Oral iron is first-line for iron deficiency anaemia in children, and IV iron is used only when oral iron is not tolerated despite trying different preparations. Either way, treatment continues until iron stores are replenished."},
+{h:"Vaccination with a minor illness",p:"Vaccination should not be postponed for a minor illness without fever, such as a cold. It should be deferred, however, if the child has an acute illness with fever, until they have recovered.",m:"A minor illness without fever, such as a cold, is no reason to delay vaccination. However, if the child has an acute febrile illness, vaccination is deferred until recovery."},
+{h:"Neonatal hypoglycaemia",p:"Routine blood glucose monitoring is not needed in healthy term babies. At-risk babies should have glucose measured before the second feed, and feeding should be supported. If glucose remains below 2.0 mmol/L despite feeding, the baby should be reviewed by a paediatrician.",m:"Healthy term babies do not need routine glucose checks, but at-risk babies should be tested before the second feed while feeding is supported. If glucose stays below 2.0 mmol/L despite feeding, a paediatrician should review the baby."}];
+
+/* ---------- Reading system: logs, plan, hub ---------- */
+function rlog(f,n){const d=today();S.rlog=S.rlog&&typeof S.rlog==="object"?S.rlog:{};const r=S.rlog[d]=S.rlog[d]||{};r[f]=(r[f]||0)+(n||1)}
+function rhist(o){S.rhist=Array.isArray(S.rhist)?S.rhist:[];o.ts=Date.now();o.d=today();S.rhist.push(o);if(S.rhist.length>600)S.rhist=S.rhist.slice(-600)}
+const RH=k=>(Array.isArray(S.rhist)?S.rhist:[]).filter(h=>h.k===k);
+const todayN=f=>((S.rlog||{})[today()]||{})[f]||0;
+const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+function planWeek(){if(!S.plan||!S.plan.start)return 0;const days=Math.round((new Date(today()+"T12:00:00")-new Date(S.plan.start+"T12:00:00"))/864e5);return Math.floor(days/7)+1}
+function weekStart(){const w=planWeek();return w?addDays(S.plan.start,(w-1)*7):today()}
+function leastSet(prefix){const sets=paSets();const c=id=>RH(prefix).filter(h=>h.id===id).length;return sets.slice().sort((a,b)=>c(a.id)-c(b.id)||Math.random()-.5)[0].id}
+function planTasks(w){
+  if(w===1)return [{f:"skim30",n:5,t:"30 秒略讀＋寫一句標籤",a:"rs30"},{f:"map",n:1,t:"45 秒地圖：只靠標籤答配對題",a:"pamapR"}];
+  if(w===2)return [{f:"scan5",n:2,t:"15 秒找 5 個詞",a:"rs5"},{f:"hunt",n:1,t:"關鍵字獵人",a:"pahuntR"}];
+  if(w===3)return [{f:"pat",n:1,t:"15 分鐘限時 Part A（本週 3 套）",a:"patR"},{f:"logic",n:1,t:"精讀：邏輯詞 8 題",a:"rlg"}];
+  const odd=(Math.round((new Date(today()+"T12:00:00")-new Date(S.plan.start+"T12:00:00"))/864e5))%2;
+  if(w===4)return odd&&OFFS.length?[{f:"mock",n:1,t:"完整 Reading 模考（A＋B＋C，60 分鐘）",a:"mockR"}]:[{f:"pat",n:1,t:"考試條件下的 15 分鐘 Part A",a:"patR"}];
+  return [{f:"pat",n:1,t:"考前維持：每天一套 15 分鐘 Part A",a:"patR"},{f:"skim30",n:2,t:"30 秒略讀暖身",a:"rs30"}]}
+function goals(){
+  const mp=RH("map").slice(-5).map(h=>h.qT?h.q/h.qT:null).filter(x=>x!=null),sc=RH("scan5").filter(h=>h.ok).slice(-5).map(h=>h.ms/h.n/1000);
+  const ws=weekStart(),pats=RH("pat").filter(h=>h.d>=ws),good=pats.filter(h=>h.sc/h.n>=.8).length,sk=RH("skim").slice(-10).map(h=>h.r);
+  return [
+   {w:1,t:"只靠標籤答配對題",v:mp.length?Math.round(avg(mp)*100)+"%":"—",ok:mp.length&&avg(mp)>=.8,g:"≥ 80%"},
+   {w:1,t:"略讀標籤自評（近 10 次）",v:sk.length?avg(sk).toFixed(1):"—",ok:sk.length>=5&&avg(sk)>=4,g:"穩定 4–5 分"},
+   {w:2,t:"每個關鍵字平均秒數",v:sc.length?avg(sc).toFixed(1)+" 秒":"—",ok:sc.length&&avg(sc)<10,g:"< 10 秒"},
+   {w:3,t:"本週限時全套達 80%",v:good+"/"+pats.length+" 套",ok:good>=3,g:"3 套（20 題對 16）"},
+   {w:4,t:"完整 Reading 模考",v:RH("mock").length+" 次",ok:RH("mock").length>=3,g:"隔天一次"}]}
+function planCard(){const w=planWeek();
+  if(!w)return `<div class="tx"><h4>四週練習計畫</h4><p class="muted" style="margin:0 0 10px">第 1 週略讀、第 2 週掃讀、第 3 週限時整合、第 4 週模考。每天大約 10–20 分鐘，進度會跟著帳號同步。</p><button class="btn primary" data-a="planstart">今天開始</button></div>`;
+  const tasks=planTasks(w),wk=Math.min(w,5);const names=["","第 1 週 · 略讀","第 2 週 · 掃讀","第 3 週 · 限時整合","第 4 週 · 模考","考前維持"];
+  return `<div class="tx"><h4>${names[wk]}<span class="mono" style="margin-left:auto;font-size:12px">開始於 ${S.plan.start}</span></h4>
+  <div style="display:grid;gap:8px">${tasks.map(t=>{const n=todayN(t.f),done=n>=t.n;return `<button class="btn ${done?"ghost":"primary"}" data-a="${t.a}" style="justify-content:space-between">${done?"✓ ":""}${esc(t.t)}<span class="mono">${Math.min(n,t.n)}/${t.n}</span></button>`}).join("")}</div>
+  <div class="list" style="margin-top:12px">${goals().map(g=>`<div class="li" style="grid-template-columns:1fr auto;${g.w===wk?"border-color:var(--amber)":""}"><span class="t">${g.ok?"✓ ":""}W${g.w} · ${esc(g.t)}<br><span class="z">目標 ${esc(g.g)}</span></span><b class="mono">${esc(g.v)}</b></div>`).join("")}</div>
+  <p class="note">本章最重要的一句：Part A 不計時就不要練。這裡所有 Part A 練習都會計時。</p>
+  <button class="small" data-a="planreset">重新從第 1 週開始</button></div>`}
+const MAP15=[["0:00–0:45","建立地圖","看四篇的標題（1 秒）、小標題（3 秒）、格式、主題字，每篇在心裡說一句話。時間到就停。"],["0:45–4:00","輕鬆找","配對題，每題約 25 秒，靠地圖直接判斷。"],["4:00–11:00","持續找","簡答題，每題 30–40 秒：關鍵字 3 秒 → 選文本 2 秒 → 掃讀 10–15 秒 → 讀那一句 10 秒 → 寫答案 5 秒。超過 40 秒加點跳過。第 9–12 題常放難題。"],["11:00–14:00","回頭","應該已答 15–17 題。回頭做加點的題；仍不會就用地圖猜，不要留白。"],["14:00–15:00","確認","只檢查拼字和格式。不要改答案：最後一刻改答案，從對改錯比較多。"]];
+function rHub(){const sets=paSets(),sk=RH("skim").slice(-7).map(h=>h.r),s5=RH("scan5").filter(h=>h.ok).slice(-5).map(h=>h.ms/h.n/1000),lg=RH("logic").slice(-1)[0];
+  return header()+`<section class="section"><h2>Reading 訓練中心</h2>${planCard()}</section>
+  <section class="section"><details><summary><b>Part A 15 分鐘地圖</b>（點開看五個階段）</summary><div class="list" style="margin-top:10px">${MAP15.map(r=>`<div class="li" style="grid-template-columns:96px 1fr"><b class="mono">${r[0]}</b><span class="t"><b>${r[1]}</b>：${esc(r[2])}</span></div>`).join("")}</div>
+  <p class="note">每一題的答案：問劑量寫劑量、問頻率寫頻率；不寫句子；題目已給單位就不重寫；不確定要不要單位就加上；通常 ≤3 個字，超過字數意思對也算錯。Part A 用原文的字；Part B／C 選意思相符的，不是重複字最多的。</p></details></section>
+  <section class="section"><h2>技能練習</h2><div class="para">
+   <button class="pcard" data-a="rs30"><span class="label">技能 1 · 略讀</span><b>30 秒略讀，寫一句標籤</b><span>只看標題、小標題、每段第一句和數字；30 秒後選格式、寫一句話，再看全文替自己打 1–5 分</span><span class="mono">${sk.length?"近 7 次平均 "+avg(sk).toFixed(1)+" 分":"尚未練習"} · 今天 ${todayN("skim30")}</span></button>
+   <button class="pcard" data-a="rs5"><span class="label">技能 2 · 掃讀</span><b>15 秒找 5 個詞</b><span>先記住目標，再在整頁文本裡點出 5 個藥名、數值或術語。沒找齊就重來</span><span class="mono">${s5.length?"每詞平均 "+avg(s5).toFixed(1)+" 秒":"尚未練習"}</span></button>
+   <button class="pcard" data-a="rlg"><span class="label">技能 3 · 精讀</span><b>邏輯詞與陷阱選項</b><span>unless、only when、although、until…先判斷關係，再選意思相符的選項，避開重字陷阱和否定字首</span><span class="mono">${lg?"上次 "+lg.sc+"/"+lg.n:"尚未練習"}</span></button>
+   <button class="pcard" data-a="rsum"><span class="label">技能 3 · 精讀</span><b>兩句摘要，保留每個邏輯詞</b><span>讀一段兩次，用兩句話寫出確切意思；自動檢查有沒有漏掉 unless、however 這類詞</span><span class="mono">今天 ${todayN("summ")}</span></button>
+  </div></section>
+  <section class="section"><h2>Part A 文本組</h2><p class="note" style="margin-top:0">建議順序：45 秒地圖 → 關鍵字獵人 → 15 分鐘限時。限時全套和真實考試一樣，交卷後才對答案。</p><div style="display:grid;gap:10px">${sets.map(s=>{const r=S.lab["pa_"+s.id]||{},h=S.lab["ph_"+s.id]||{},p=S.lab["pat_"+s.id]||{};
+   return `<div class="tx"><h4>${esc(s.title)}</h4><div class="row">
+    <button class="btn" data-a="pamap" data-id="${s.id}">45 秒地圖${r.best!=null?" · "+r.best+"/"+r.total:""}</button>
+    <button class="btn" data-a="pahunt" data-id="${s.id}">關鍵字獵人${h.best!=null?" · "+h.best+"/"+h.total:""}</button>
+    <button class="btn primary" data-a="pat" data-id="${s.id}">限時全套${p.best!=null?" · 最佳 "+p.best+"/"+p.total:""}</button>
+    <button class="btn ghost" data-a="scan" data-id="${s.id}">練習模式（即時對答案）</button></div></div>`}).join("")}</div></section>
+  ${OFFS.length?`<section class="section"><h2>完整 Reading 模考 · 60 分鐘</h2><p class="note" style="margin-top:0">Part A 15 分鐘（限時、交卷才對答案），接著 Part B 和 Part C。頂端顯示 60 分鐘總時間。請關掉手機、不要中途休息。</p><div class="row">${OFFS.filter(o=>o.RA&&o.RB&&o.RC).map(o=>`<button class="btn" data-a="mock" data-t="${o.id}">${esc(o.name)}</button>`).join("")}</div></section>`:""}
+  <div class="row" style="margin:14px 0"><button class="btn primary" data-a="home">回到首頁</button></div>`}
+/* ---------- skill 1: 30-second skim label ---------- */
+function allTexts(){const out=[];paSets().forEach(s=>{const T=getScan(s.id);T.texts.forEach(t=>{if((t.s||[]).length)out.push({sid:s.id,k:t.k,id:s.id+":"+t.k})})});return out}
+function startRs30(){const seen=new Set(RH("skim").map(h=>h.id));const all=allTexts();const pool=all.filter(x=>!seen.has(x.id));const pick=shuffle(pool.length?pool:all)[0];
+  const t0=Date.now();V={view:"rs30",R:{...pick,phase:"look",t0,fmt:null,txt:""}};render();window.scrollTo(0,0);
+  setTimeout(()=>{if(V.view==="rs30"&&V.R.t0===t0&&V.R.phase==="look"){V.R.phase="write";render()}},30000)}
+function rs30View(){const R=V.R,T=getScan(R.sid),t=T.texts.find(x=>x.k===R.k),fmt=textFmt(R.sid,t),lab=(PAMAP[paKey(R.sid)]||{})[R.k]||t.h;
+  const top=`<div class="sess-top"><button class="btn ghost" data-a="rhub">結束</button><span class="label" style="flex:1;text-align:center">30 秒略讀 · 今天第 ${todayN("skim30")+1} 篇</span>${R.phase==="look"?`<span class="clock" data-start="${R.t0}" data-dur="30000">0:30</span>`:""}</div>`;
+  const body=`<section class="tx block"><h4>${esc(t.h)}</h4><div>${t.s.map((s,i)=>`<span class="sen" style="cursor:default">${i===0?"<b>"+esc(s)+"</b>":esc(s)}</span>`).join(" ")}</div></section>`;
+  if(R.phase==="look")return top+`<div class="qbar"><span class="label">只看：標題 → 小標題 → 每段第一句 → 數字、粗體、大寫詞</span><p class="qtext">不要停在看不懂的句子。30 秒後文本會收起來。</p><div><button class="btn" data-a="r30go">看完了</button></div></div>${body}`;
+  if(R.phase==="write")return top+`<div class="qbar"><span class="label">文本已收起</span><p class="qtext">1. 這是什麼格式？</p><div class="letters">${Object.entries(FMTS).map(([k,z])=>`<button class="btn ${R.fmt===k?"primary":""}" data-a="r30fmt" data-v="${k}">${z}</button>`).join("")}</div>
+   <p class="qtext" style="margin-top:8px">2. 用一句英文描述它：Text ${R.k} is a …</p><form data-f="r30" style="display:grid;gap:8px"><textarea class="rw" id="r30in" aria-label="一句話標籤" placeholder="e.g. a dose table for … / a parent leaflet on …">${esc(R.txt)}</textarea><div><button class="btn primary" ${R.fmt?"":"disabled"}>對照全文</button></div></form></div>`;
+  const words=paWords(R.txt),tw=new Set(paWords(t.h+" "+lab)),hit=words.filter(w=>tw.has(w)),fmtOk=R.fmt===fmt;
+  return top+`<div class="qbar"><span class="label">對照全文</span>
+   <ul class="checks"><li><span class="${fmtOk?"y":"n"}">${fmtOk?"✓":"✗"}</span><span>格式：你選 ${FMTS[R.fmt]}，答案是 ${FMTS[fmt]}</span></li><li><span class="${hit.length?"y":"n"}">${hit.length?"✓":"✗"}</span><span>主題字：${hit.length?"有寫到 "+esc([...new Set(hit)].slice(0,4).join("、")):"沒有寫到標題裡的主題字"}</span></li></ul>
+   <p class="xp">你的標籤：${esc(R.txt)}<br>參考：Text ${R.k} is a ${esc(lab.charAt(0).toLowerCase()+lab.slice(1))}.</p>
+   ${R.r?`<p class="xp">已記錄：${R.r} 分。</p><div class="row"><button class="btn primary" data-a="rs30">下一篇</button><button class="btn ghost" data-a="rhub">回到訓練中心</button></div>`:`<p class="qtext">讀完全文後，你的那句話有多準？</p><div class="letters">${[1,2,3,4,5].map(n=>`<button class="btn" data-a="r30rate" data-v="${n}">${n}</button>`).join("")}</div><p class="note">1＝完全猜錯　3＝大方向對但漏了格式或主題　5＝格式、主題、重點都對</p>`}</div>${body}`}
+/* ---------- skill 2: five terms in fifteen seconds ---------- */
+function s5Terms(T){const page=T.texts.map(t=>[t.h,...(t.s||[])].join(" \n ")).join(" \n ");const uniq=x=>page.split(x).length===2;
+  const UNIT=/^(micrograms?|milligrams?|minutes|hours|seconds|weeks|months|years|millilitres)$/i,MED=/(ol|ine|one|ide|itis|osis|aemia|emia|ectomy|scopy|ology|pathy|algia|oma|ase|cillin|mycin|azole|pril|sartan|ium|profen|setron|uria|ysis|otomy|coccus|bacter|ella|in)$/i,GEN=/^(medicine|routine|guideline|guidelines|examine|determine|baseline|discipline|combine|define|online|decline|someone|everyone|outside|provide|decide|inside|within|begin|protein|again|between|wherever|machine|alone|consider|bacteria|disease|diseases|release|increase|decrease|control|explain|purchase|showcase|database)$/i;
+  const nums=new Set(),med=new Set(),oth=new Set();
+  T.texts.forEach(t=>(t.s||[]).forEach(s=>{(s.match(/(?<![\d.,–-])\b\d+(?:[.,–-]\d+)?\s?(?:mg\/kg|mL\/kg|micrograms|micromol\/L|mmol\/L|mg|mL|hours|minutes|days|weeks|months|years|%|kg)/g)||[]).forEach(m=>nums.add(m.trim()));
+    const toks=s.match(/\b[A-Za-z][A-Za-z0-9\-]{3,}\b/g)||[];toks.forEach((w,k)=>{if(UNIT.test(w)||PASTOP.has(w.toLowerCase()))return;
+      if(GEN.test(w))return;if(/^[A-Z]{2,}[0-9]?$/.test(w)||(w.length>=7&&MED.test(w)))med.add(w);else if(w.length>=10)oth.add(w)})}));
+  const pick=(set,n,out)=>{for(const x of shuffle([...set])){if(out.length>=n)break;const lx=x.toLowerCase();if(!uniq(x)||page.toLowerCase().split(lx).length!==2||out.some(y=>y.toLowerCase().includes(lx)||lx.includes(y.toLowerCase())))continue;out.push(x)}return out};
+  const out=[];pick(nums,2,out);pick(med,5,out);pick(nums,5,out);pick(oth,5,out);return shuffle(out)}
+function startRs5(id){id=id||leastSet("scan5");const T=getScan(id);const terms=s5Terms(T);V={view:"rs5",R:{id,terms,phase:"target",found:[],miss:0,t0:0,tries:0}};render();window.scrollTo(0,0)}
+function rs5Go(){const R=V.R;R.phase="hunt";R.found=[];R.miss=0;R.tries++;const t0=R.t0=Date.now();render();
+  setTimeout(()=>{if(V.view==="rs5"&&V.R.t0===t0&&V.R.phase==="hunt"){V.R.phase="fail";render()}},15000)}
+function rs5View(){const R=V.R,T=getScan(R.id);
+  const top=`<div class="sess-top"><button class="btn ghost" data-a="rhub">結束</button><span class="label" style="flex:1;text-align:center">15 秒找 5 個詞 · ${esc(T.title)}</span>${R.phase==="hunt"?`<span class="clock" data-start="${R.t0}" data-dur="15000">0:15</span>`:""}</div>`;
+  const kind=x=>/\d/.test(x)?"數值":/^[A-Z]/.test(x)?"名稱":"術語";
+  const list=`<div class="row">${R.terms.map((x,i)=>`<span class="chip ${R.found.includes(i)?"done":""}" style="font-size:14px">${R.found.includes(i)?"✓ ":""}${esc(x)} <small>${kind(x)}</small></span>`).join("")}</div>`;
+  if(R.phase==="target")return top+`<div class="qbar"><span class="label">步驟 1：先把目標記在腦中</span><p class="qtext">要找的 5 個詞</p>${list}<p class="muted" style="margin:0">記住每個詞的「長相」：數字找數字、藥名找大寫開頭的長字。開始後只動眼睛，不讀句子。</p><div><button class="btn primary" data-a="r5go">記好了，開始 15 秒</button></div></div>`;
+  const page=T.texts.map(t=>`<section class="tx block"><h4><span class="k">${t.k}</span>${esc(t.h)}</h4><div>${(t.s||[]).map(s=>{let h=esc(s);R.terms.forEach((x,i)=>{const e=esc(x);if(h.includes(e))h=h.replace(e,`<button class="s5t ${R.phase!=="hunt"?(R.found.includes(i)?"ok":"no"):(R.found.includes(i)?"ok":"")}" data-a="r5hit" data-i="${i}">${e}</button>`)});return `<span class="sen" ${R.phase==="hunt"?'data-a="r5miss"':""}>${h}</span>`}).join(" ")}</div></section>`).join("");
+  if(R.phase==="hunt")return top+`<div class="qbar"><span class="label">只動眼睛，不讀句子</span>${list}<p class="muted" style="margin:0">點錯 ${R.miss} 次</p></div><div class="texts">${page}</div>`;
+  const ok=R.phase==="win",sec=ok?(R.ms/1000):null;
+  return top+`<div class="qbar"><span class="label">${ok?"全部找到":"時間到"}</span><p class="qtext">${ok?`${sec.toFixed(1)} 秒找到 5 個詞，每個平均 ${(sec/5).toFixed(1)} 秒`:`找到 ${R.found.length}/5。書上的做法：沒找齊就用同一組詞再來一次。`}</p>${list}
+   <div class="row">${ok?`<button class="btn primary" data-a="rs5">換一組</button>`:`<button class="btn primary" data-a="r5go">同一組再來一次</button>`}<button class="btn ghost" data-a="rhub">回到訓練中心</button></div></div><div class="texts">${page}</div>`}
+/* ---------- skill 3: logic words ---------- */
+const RELS=["條件","例外","對比","因果","順序","否定字首"];
+function startRlg(){const items=shuffle(LITEMS.map((x,i)=>i)).slice(0,8).map(i=>({i,o:shuffle(LITEMS[i].o.map((_,k)=>k))}));V={view:"rlg",R:{items,qi:0,rel:null,pick:null,res:[]}};render();window.scrollTo(0,0)}
+function rlgView(){const R=V.R;const top=`<div class="sess-top"><button class="btn ghost" data-a="rhub">結束</button><span class="label" style="flex:1;text-align:center">精讀：邏輯詞與陷阱選項</span><span class="mono">${Math.min(R.qi+1,R.items.length)}/${R.items.length}</span></div>`;
+  if(R.qi>=R.items.length){const a=R.res.filter(r=>r.rel).length,b=R.res.filter(r=>r.ok).length;
+    return header()+`<section class="end"><h2>精讀練習完成</h2><div class="res"><div><span class="label">邏輯關係</span><b>${a}/${R.res.length}</b></div><div><span class="label">意思相符</span><b>${b}/${R.res.length}</b></div><div><span class="label">踩到重字陷阱</span><b>${R.res.filter(r=>r.trap).length}</b></div></div>
+    <p class="xp" style="margin-top:14px">選項要和句子的「意思」相符，不是和句子「重複最多字」。unless、only when、except、until 這些字一漏，意思就反了。</p>
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-a="rlg">再來 8 題</button><button class="btn" data-a="rsum">練兩句摘要</button><button class="btn ghost" data-a="rhub">回到訓練中心</button></div></section>`}
+  const it=R.items[R.qi],L=LITEMS[it.i];const sent=esc(L.s).replace(new RegExp("\\b("+L.w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")\\b","i"),"<mark class=\"lg\">$1</mark>");
+  let body=`<p class="qtext" style="font-weight:500">${sent}</p><p class="muted" style="margin:0">1. 標出來的字表示什麼關係？</p><div class="letters">${RELS.map(r=>`<button class="btn ${R.rel===r?(r===L.rel?"primary":""):""}" data-a="rlrel" data-v="${r}" ${R.rel?"disabled":""}>${r}</button>`).join("")}</div>`;
+  if(R.rel){body+=`${R.rel!==L.rel?`<p class="xp" style="margin:0">答案：${L.rel}</p>`:""}<p class="muted" style="margin:0">2. 哪個選項的意思和句子相符？</p><div class="opts">${it.o.map(k=>{let c="";if(R.pick!=null){if(k===0)c="right";else if(k===R.pick)c="wrong"}return `<button class="opt ${c}" data-a="rlpick" data-v="${k}" ${R.pick!=null?"disabled":""}><span>${esc(L.o[k])}</span></button>`}).join("")}</div>`}
+  if(R.pick!=null){const ov=k=>paWords(L.o[k]).filter(w=>paWords(L.s).includes(w)).length;const trapK=[1,2].sort((a,b)=>ov(b)-ov(a))[0];
+    body+=`<div class="fb"><div class="verdict ${R.pick===0?"ok":"no"}">${R.pick===0?"意思相符":"這是陷阱"}</div><p class="xp">${esc(L.x)}</p>${ov(trapK)>=ov(0)?`<p class="note">重字陷阱：「${esc(L.o[trapK])}」和原句重複 ${ov(trapK)} 個字，正解只重複 ${ov(0)} 個。</p>`:""}<div><button class="btn primary" data-a="rlnext" id="nextBtn">${R.qi+1>=R.items.length?"看結果":"下一題"}</button></div></div>`}
+  return top+`<div class="qbar"><span class="label">先讀文法，再讀意思</span>${body}</div>`}
+/* ---------- skill 3: two-sentence summary keeping logic words ---------- */
+function startRsum(){const done=new Set(RH("summ").map(h=>h.i));const pool=SUMM.map((_,i)=>i).filter(i=>!done.has(i));const i=shuffle(pool.length?pool:SUMM.map((_,i)=>i))[0];V={view:"rsum",R:{i,txt:"",res:null}};render();window.scrollTo(0,0)}
+function sumCheck(src,sum){const found=[...new Set((src.match(LOGRE)||[]).map(w=>w.toLowerCase().replace(/\s+/g," ")))];const rels=[...new Set(found.map(logicRel))];
+  const sumRels=new Set((sum.match(LOGRE)||[]).map(w=>logicRel(w.toLowerCase().replace(/\s+/g," "))));
+  const neg=/\b(not|no|never|cannot|n't|only)\b/i;const out=rels.map(r=>({r,ok:sumRels.has(r),w:found.filter(w=>logicRel(w)===r)}));
+  if(neg.test(src))out.push({r:"否定／限定",ok:neg.test(sum),w:(src.match(/\b(not|no|never|cannot|only)\b/gi)||[]).map(x=>x.toLowerCase())});
+  const sc=(sum.match(/[.!?](\s|$)/g)||[]).length;return {out,sc}}
+function rsumView(){const R=V.R,P=SUMM[R.i];const top=`<div class="sess-top"><button class="btn ghost" data-a="rhub">結束</button><span class="label" style="flex:1;text-align:center">兩句摘要：保留每個邏輯詞</span></div>`;
+  const para=`<article class="article" style="max-width:none"><h3>${esc(P.h)}</h3><p>${R.res?logicHL(P.p):esc(P.p)}</p></article>`;
+  if(!R.res)return top+`<div class="qbar"><span class="label">讀兩次：第一次看文法，第二次看意思</span>${para}<form data-f="rsum" style="display:grid;gap:8px"><textarea class="rw" id="ans" aria-label="兩句摘要">${esc(R.txt)}</textarea><div><button class="btn primary">檢查</button></div></form></div>`;
+  const {out,sc}=R.res;return top+`<div class="qbar"><span class="label">檢查結果</span>${para}<p class="xp">你的摘要：${esc(R.txt)}</p>
+   <ul class="checks">${out.map(o=>`<li><span class="${o.ok?"y":"n"}">${o.ok?"✓":"✗"}</span><span>${o.r}：原文用了 ${esc(o.w.join("、"))}${o.ok?"，你的摘要有保留":"，你的摘要沒有對應的詞"}</span></li>`).join("")}<li><span class="${sc<=2?"y":"w"}">${sc<=2?"✓":"!"}</span><span>${sc} 句（要求兩句）</span></li></ul>
+   <p class="xp">參考摘要：${logicHL(P.m)}</p><p class="note">最常見的錯誤是漏掉 unless、only when、despite、however，摘要的意思就變了。</p>
+   <div class="row"><button class="btn primary" data-a="rsum">下一段</button><button class="btn ghost" data-a="rhub">回到訓練中心</button></div></div>`}
+/* ---------- answer form ---------- */
+function formCheck(q,ans){const out=[],a=String(ans||"").trim();if(!a||q.t!=="short")return out;const words=a.split(/\s+/).filter(Boolean),lim=q.lim||3;
+  const um=q.q.match(/\(([^)]*(?:mg|mL|kg|hours|minutes|days|micromol\/L|mmol\/L|micrograms|%)[^)]*)\)\s*$/i);
+  const wc=um&&a.toLowerCase().includes(um[1].toLowerCase())?a.toLowerCase().replace(um[1].toLowerCase(),"").split(/\s+/).filter(Boolean).length:words.length;
+  if(wc>lim)out.push(`超過字數：${wc} 個字（這題 ≤${lim} 個字），意思對也會算錯`);
+  if(words.length>=4&&/\b(is|are|was|were|should|must|will|can|has|have)\b/i.test(a))out.push("不要寫成句子，只寫答案本身");
+  if(um&&a.toLowerCase().includes(um[1].toLowerCase()))out.push(`題目已給單位（${um[1]}），不用重寫`);
+  if(!um&&/^\s*[\d.,–-]+\s*$/.test(a)&&/\d\s*(mg|mL|hours?|minutes?|days?|%|kg|weeks?|months?|years?|micro)/i.test(q.show||""))out.push("只寫了數字：加上單位比較保險");
+  return out}
+function formNote(q,ans){const f=formCheck(q,ans);return f.length?`<ul class="checks">${f.map(x=>`<li><span class="w">!</span><span>答案形式：${esc(x)}</span></li>`).join("")}</ul>`:""}
+/* ---------- 15-minute timed Part A ---------- */
+const patDur=T=>T.exam?T.exam*60000:Math.max(6,Math.round(T.q.length*.75))*60000;
+const PHN={survey:"建立地圖",easy:"輕鬆找 · 配對題",sust:"持續找 · 簡答題",ret:"回頭",conf:"確認"};
+function patPhase(){const X=V.X;if(X.phase==="survey")return "survey";const e=Date.now()-X.t0,r=X.dur/900000;return e<240000*r?"easy":e<660000*r?"sust":e<840000*r?"ret":"conf"}
+function startPAT(id,chain){const T=getScan(id),now=Date.now();V={view:"pat",X:{id,dur:patDur(T),t0:now,phase:"survey",qi:0,ans:{},draft:{},dots:[],unsure:[],tq:{},qs0:0,log:[],done:false,banner:"",bkey:"",chain:!!chain,warned:{}}};render();window.scrollTo(0,0);
+  setTimeout(()=>{if(V.view==="pat"&&V.X.t0===now&&V.X.phase==="survey")patBegin()},45000)}
+function patBegin(){const X=V.X;X.phase="q";X.surveyMs=Date.now()-X.t0;X.qs0=Date.now();X.bkey="easy";X.banner=getScan(X.id).q[0].t==="match"?"配對題：每題約 25 秒，靠地圖直接判斷在哪一篇。":"這組從簡答題開始：直接進入「持續找」的節奏，每題 30–40 秒。";render();window.scrollTo(0,0)}
+function patSaveDraft(){const X=V.X,i=document.getElementById("patin");if(i)X.draft[X.qi]=i.value}
+function patLeave(){const X=V.X;if(X.qs0){X.tq[X.qi]=(X.tq[X.qi]||0)+Date.now()-X.qs0;X.qs0=0}}
+function patSet(i,v){const X=V.X;v=String(v);const p=X.ans[i];if(p!=null&&p!==""&&p!==v)X.log.push({i,from:p,to:v,ph:patPhase()});X.ans[i]=v}
+function patGo(i){const X=V.X;patSaveDraft();patLeave();X.qi=i;X.qs0=Date.now();render();window.scrollTo(0,0)}
+const patAnswered=(X,i)=>X.ans[i]!=null&&String(X.ans[i]).trim()!=="";
+function patNextIdx(skipCur){const X=V.X,N=getScan(X.id).q.length;for(let k=1;k<=N;k++){const j=(X.qi+k)%N;if(!patAnswered(X,j)&&!(X.dots.includes(j)&&patPhase()!=="ret"&&patPhase()!=="conf"))return j}for(let k=1;k<=N;k++){const j=(X.qi+k)%N;if(!patAnswered(X,j))return j}return skipCur?X.qi:Math.min(X.qi+1,N-1)}
+function patNext(){const X=V.X;const i=document.getElementById("patin");if(i&&i.value.trim())patSet(X.qi,i.value.trim());patGo(patNextIdx())}
+function patSkip(){const X=V.X;if(!X.dots.includes(X.qi))X.dots.push(X.qi);patGo(patNextIdx(true))}
+function patOk(q,a){a=a==null?"":String(a).trim();if(!a)return false;if(q.t==="match")return a===q.a;if(q.t==="tap")return a===q.loc[0]+q.loc[1];try{return new RegExp(q.a,"i").test(a)}catch(e){return false}}
+function patSubmit(){const X=V.X;if(X.done)return;if(X.phase!=="survey"){patSaveDraft();const i=document.getElementById("patin");if(i&&i.value.trim())patSet(X.qi,i.value.trim());patLeave()}
+  const T=getScan(X.id);X.done=true;X.endMs=Math.min(Date.now()-X.t0,X.dur);X.res=T.q.map((q,i)=>({ok:patOk(q,X.ans[i]),a:X.ans[i]||"",ms:X.tq[i]||0,form:formCheck(q,X.ans[i])}));
+  const sc=X.res.filter(r=>r.ok).length,n=T.q.length;const r=S.lab["pat_"+X.id]||{};r.last=sc;r.total=n;r.best=Math.max(r.best||0,sc);S.lab["pat_"+X.id]=r;
+  if(T.exam)saveRec(T.id,sc,n);rhist({k:"pat",id:X.id,sc,n,ms:X.endMs});rlog("pat");if(CHAIN&&X.chain)CHAIN.ra={sc,n};touchStreak();save();render();window.scrollTo(0,0)}
+function patView(){const X=V.X,T=getScan(X.id),N=T.q.length,M=PAMAP[paKey(X.id)]||{};
+  if(X.done)return patResult();
+  const texts=(tap)=>`${T.img?`<div class="row" style="margin-top:10px"><button class="btn ghost" data-a="patimg">${X.showImg?"隱藏原版版面":"看原版版面（表格、圖表）"}</button></div>${X.showImg?`<div class="raimgs">${T.img.map(k=>`<img src="${RAIMG[k]||""}" alt="Reading Part A 原版頁面">`).join("")}</div>`:""}`:""}<div class="texts ${tap?"tapmode":""}">${T.texts.map(t=>`<section class="tx block"><h4><span class="k">${t.k}</span>${esc(t.h)}</h4><div>${(t.s||[]).map((s,i)=>`<button class="sen ${tap&&X.ans[X.qi]===t.k+i?"pick":""}" ${tap?`data-a="pattap" data-v="${t.k}${i}"`:'tabindex="-1"'}>${esc(s)}</button> `).join("")}</div></section>`).join("")}</div><p class="disclaim" style="margin-top:12px">${T.src?esc(T.src):"練習用文本，數值與建議為閱讀訓練而改寫，非臨床指引。"}</p>`;
+  const top=`<div class="sess-top"><button class="btn ghost" data-a="patquit">結束</button><span class="label" style="flex:1;text-align:center">${PHN[patPhase()]}</span><span class="clock" data-start="${X.t0}" data-dur="${X.dur}" title="總時間">${fmtT(X.dur)}</span>${X.phase==="survey"?`<span class="clock" data-start="${X.t0}" data-dur="45000">0:45</span>`:`<span class="clock" id="patq">0:00</span>`}</div>`;
+  if(X.phase==="survey")return top+`<div class="qbar"><span class="label">0:00–0:45 · 建立地圖</span><p class="qtext">每篇：標題 1 秒 → 小標題 3 秒 → 格式（表格／步驟／衛教單／文章）→ 主題字。不要讀內容。</p><p class="muted" style="margin:0">在心裡說：Text A is a …　45 秒一到就開始作答，不延長。</p><div><button class="btn primary" data-a="patbegin">地圖建好了，開始作答</button></div></div>${texts(false)}`;
+  const q=T.q[X.qi],a=X.ans[X.qi],hard=N>=20&&X.qi>=8&&X.qi<=11;
+  const chips=`<div class="patnav">${T.q.map((_,i)=>`<button class="pchip ${i===X.qi?"cur":""} ${patAnswered(X,i)?"ans":""} ${X.dots.includes(i)?"dot":""} ${X.unsure.includes(i)?"uns":""}" data-a="patgo" data-i="${i}" aria-label="第 ${i+1} 題">${i+1}${X.dots.includes(i)?"•":""}${X.unsure.includes(i)?"?":""}</button>`).join("")}</div>`;
+  let ctl="";if(q.t==="match")ctl=`<div class="letters">${T.texts.map(t=>`<button class="btn ${a===t.k?"primary":""}" data-a="patpick" data-v="${t.k}">${t.k}</button>`).join("")}</div>`;
+  if(q.t==="short")ctl=`<form class="typein" data-f="patshort"><input id="patin" autocomplete="off" value="${esc(X.draft[X.qi]!=null?X.draft[X.qi]:(a||""))}" aria-label="簡答（通常 ≤3 個字）"><button class="btn primary">下一題</button></form>`;
+  if(q.t==="tap")ctl=`<p class="muted" style="margin:0">在下方原文中點選答案所在的句子。${a?"已選："+esc(a):""}</p>`;
+  return top+(X.banner?`<p class="xp" style="margin:8px 0">${esc(X.banner)}</p>`:"")+chips+`<div class="qbar"><span class="label">第 ${X.qi+1} 題 · ${q.t==="match"?"Which text?":q.t==="short"?"簡答（照原文用字，≤"+(q.lim||3)+" 字）":"找出句子"}${hard?" · 難題區：卡住就跳":""}</span><p class="qtext">${kwText(q.q)}</p>${ctl}
+   <p class="xp" id="patnudge" style="display:none;margin:0">感覺答案就在附近？那是錯覺。換一篇還沒查過的文本，或加點跳過。</p>
+   <div class="row">${q.t!=="short"?`<button class="btn primary" data-a="patnext">下一題</button>`:""}${patAnswered(X,X.qi)?"":`<button class="btn ghost" data-a="patskip">• 加點跳過</button>`}<button class="btn ghost" data-a="patuns">${X.unsure.includes(X.qi)?"取消「沒把握」":"? 沒把握"}</button><button class="btn ghost" data-a="patsubmit">交卷</button></div></div>${texts(q.t==="tap")}`}
+function patResult(){const X=V.X,T=getScan(X.id),N=T.q.length,R=X.res,sc=R.filter(r=>r.ok).length;
+  const mi=T.q.map((q,i)=>i).filter(i=>T.q[i].t==="match"),si=T.q.map((q,i)=>i).filter(i=>T.q[i].t!=="match");
+  const am=avg(mi.map(i=>R[i].ms).filter(Boolean)),as=avg(si.map(i=>R[i].ms).filter(Boolean));
+  const blanks=R.filter(r=>!String(r.a).trim()).length,forms=R.filter(r=>r.form.length).length,slow=R.filter(r=>r.ms>40000&&!X.dots.includes(R.indexOf(r))).length;
+  const dotOk=X.dots.filter(i=>R[i].ok).length,dotLeft=X.dots.filter(i=>!String(R[i].a).trim()).length;
+  const ch=X.log.map(l=>({...l,okF:patOk(T.q[l.i],l.from),okT:patOk(T.q[l.i],l.to)})),r2w=ch.filter(c=>c.okF&&!c.okT).length,w2r=ch.filter(c=>!c.okF&&c.okT).length;
+  const mAcc=mi.length?mi.filter(i=>R[i].ok).length/mi.length:1;
+  const dx=[[mAcc>=.8,`建立地圖：配對題對 ${mi.filter(i=>R[i].ok).length}/${mi.length}`+(mAcc<.8?"。標籤不夠準，回去練 45 秒地圖和 30 秒略讀。":"")],
+   [!am||am<=25000,`輕鬆找：配對題平均 ${am?Math.round(am/1000):"—"} 秒（目標 25 秒）`],
+   [!as||as<=40000,`持續找：簡答題平均 ${as?Math.round(as/1000):"—"} 秒（目標 30–40 秒）`],
+   [slow===0,slow?`有 ${slow} 題超過 40 秒卻沒有跳過：節奏被一題拖住`:"沒有題目卡超過 40 秒"],
+   [dotLeft===0,X.dots.length?`回頭：跳過 ${X.dots.length} 題，回頭後答對 ${dotOk} 題${dotLeft?"，還有 "+dotLeft+" 題沒回頭做":""}`:"這次沒有跳過任何題"],
+   [blanks===0,blanks?`留白 ${blanks} 題：空白一定 0 分，用地圖猜一個也有機會`:"沒有留白"],
+   [forms===0,forms?`答案形式有問題 ${forms} 題（字數、單位、寫成句子）`:"答案形式都沒問題"],
+   [r2w<=w2r,ch.length?`改答案 ${ch.length} 次：對改錯 ${r2w}、錯改對 ${w2r}`:"沒有改答案"]];
+  const chainBtn=X.chain&&CHAIN?`<button class="btn primary" data-a="chainnext">接著做 Part B</button>`:"";
+  return header()+`<section class="end"><h2>限時完成：${esc(T.title)}</h2>
+  <div class="res"><div><span class="label">答對</span><b>${sc}/${N}</b></div><div><span class="label">用時</span><b>${fmtT(X.endMs)}</b></div><div><span class="label">限時</span><b>${fmtT(X.dur)}</b></div></div>
+  <p class="xp" style="margin-top:12px">${sc/N>=.8?"達到 80% 的目標（20 題要對 16）。":"還沒到 80% 的目標（20 題要對 16）。看下面哪個階段出問題。"}</p>
+  <h3 style="font-size:17px;margin-top:16px">哪個階段出問題</h3><ul class="checks">${dx.map(([ok,t])=>`<li><span class="${ok?"y":"n"}">${ok?"✓":"✗"}</span><span>${esc(t)}</span></li>`).join("")}</ul>
+  ${ch.length?`<p class="note">最後一分鐘改答案通常是對改錯。第一次想好的答案多半是對的。</p>`:""}
+  <div class="row" style="margin-top:12px">${chainBtn}<button class="btn ${chainBtn?"":"primary"}" data-a="pat" data-id="${X.id}">再做一次</button><button class="btn ghost" data-a="rhub">回到訓練中心</button></div>
+  <h3 style="font-size:17px;margin-top:18px">逐題檢討</h3><div class="list">${T.q.map((q,i)=>{const r=R[i],ans=q.t==="match"?"Text "+q.a:q.t==="short"?q.show:"Text "+q.loc[0]+" 第 "+(q.loc[1]+1)+" 句";
+   const txt=T.texts.find(t=>t.k===q.loc[0]),sen=txt&&txt.s?txt.s[q.loc[1]]:"";
+   return `<div class="li" style="grid-template-columns:1fr"><span class="t">${r.ok?"✓":"✗"} ${i+1}. ${esc(q.q.replace(/^\d+\.\s*/,""))}</span><span class="z">你的答案：${esc(r.a||"（空白）")}　正解：${esc(ans)}　${Math.round(r.ms/1000)} 秒${X.dots.includes(i)?" · •跳過":""}${X.unsure.includes(i)?" · ?沒把握":""}</span>
+   ${!r.ok&&sen?`<span class="z">原文：${logicHL(sen)}</span>`:""}${q.map?`<span class="z">關鍵字對應：${esc(q.map[0])} ↔ ${esc(q.map[1])}　${esc(q.x||"")}</span>`:""}${r.form.length?`<span class="z" style="color:var(--red)">答案形式：${esc(r.form.join("；"))}</span>`:""}</div>`}).join("")}</div></section>`}
+setInterval(()=>{if(V.view!=="pat"||!V.X||V.X.done||V.X.phase==="survey")return;const X=V.X,T=getScan(X.id),q=T.q[X.qi],now=Date.now();
+  if(now-X.t0>=X.dur){patSubmit();return}
+  const ms=(X.tq[X.qi]||0)+(X.qs0?now-X.qs0:0),tg=q.t==="match"?25000:35000,el=document.getElementById("patq");
+  if(el){el.textContent=fmtT(ms);el.className="clock"+(ms>40000?" over":ms>tg?" warn":"")}
+  const nd=document.getElementById("patnudge");if(nd)nd.style.display=ms>30000&&!patAnswered(X,X.qi)?"block":"none";
+  const ph=patPhase(),N=T.q.length,done=T.q.filter((_,i)=>patAnswered(X,i)).length;let key=ph,msg="";
+  if(ph==="sust"&&X.bkey!=="sust"&&X.bkey!=="comp"){msg="持續找：關鍵字 3 秒 → 選文本 2 秒 → 掃讀 10–15 秒 → 讀那一句 10 秒 → 寫答案 5 秒。超過 40 秒就加點跳過。"}
+  if(ph==="sust"&&now-X.t0>=600000*X.dur/900000&&X.bkey!=="comp"&&N-done>=Math.ceil(N/2)){key="comp";msg=`壓縮模式：還剩 ${N-done} 題。每題 20 秒，快速猜一個，一定要寫答案。`}
+  if(ph==="ret"&&X.bkey!=="ret")msg=`回頭：已答 ${done}/${N} 題（目標約 ${Math.round(N*.8)} 題）。現在回頭做加點的題目，地圖已經更清楚了；仍不會就用標籤猜。`;
+  if(ph==="conf"&&X.bkey!=="conf")msg="最後一分鐘：只檢查拼字、字數和單位。不要改答案：最後一刻改答案，從對改錯的比較多。";
+  if(msg){X.bkey=key;X.banner=msg;patSaveDraft();render()}},500);
+/* ---------- full Reading mock (A + B + C, 60 minutes) ---------- */
+let CHAIN=null;
+function startMock(tid){CHAIN={tid,t0:Date.now(),dur:3600000,step:"RA"};startPAT(OBY[tid].RA.id,true)}
+function chainNext(){if(!CHAIN)return;const tid=CHAIN.tid;
+  if(CHAIN.step==="RA"){CHAIN.step="RB";startOff(tid,"RB");render();return}
+  if(CHAIN.step==="RB"){CHAIN.step="RC";startOff(tid,"RC");render();return}
+  CHAIN.step="end";CHAIN.endMs=Date.now()-CHAIN.t0;rhist({k:"mock",id:tid,ms:CHAIN.endMs});rlog("mock");touchStreak();save();V={view:"chainEnd"};render();window.scrollTo(0,0)}
+function chainEndView(){const C=CHAIN||{},t=OBY[C.tid]||{},rb=S.lab[recKey(C.tid,"RB")]||{},rc=S.lab[recKey(C.tid,"RC")]||{},ra=C.ra||{};
+  const sc=(ra.sc||0)+(rb.last||0)+(rc.last||0),n=(ra.n||0)+(rb.total||0)+(rc.total||0);
+  return header()+`<section class="end"><h2>完整 Reading 模考：${esc(t.name||"")}</h2><div class="res"><div><span class="label">Part A</span><b>${ra.sc??"—"}/${ra.n??"—"}</b></div><div><span class="label">Part B</span><b>${rb.last??"—"}/${rb.total??"—"}</b></div><div><span class="label">Part C</span><b>${rc.last??"—"}/${rc.total??"—"}</b></div></div>
+  <div class="res" style="margin-top:10px"><div><span class="label">總分</span><b>${sc}/${n}</b></div><div><span class="label">總用時</span><b>${fmtT(C.endMs||0)}</b></div><div><span class="label">限時</span><b>60:00</b></div></div>
+  <p class="xp" style="margin-top:12px">${(C.endMs||0)>3600000?"超過 60 分鐘。Part A 嚴守 15 分鐘；Part B 每題約 1.5 分鐘；Part C 先 90 秒略讀再作答。":"在 60 分鐘內完成。"}這只是練習分數，不能直接換算成官方分數。</p>
+  <div class="row" style="margin-top:12px"><button class="btn primary" data-a="rhub">回到訓練中心</button></div></section>`}
+const _renderBase=render;
+render=function(){if(V.view==="home")CHAIN=null;
+  if(V.view==="rhub"||V.view==="pahub"){app.innerHTML=rHub();return}
+  if(V.view==="rs30"){app.innerHTML=rs30View();const f=document.getElementById("r30in");if(f&&V.R.phase==="write")f.focus({preventScroll:true});return}
+  if(V.view==="rs5"){app.innerHTML=rs5View();return}
+  if(V.view==="rlg"){app.innerHTML=rlgView();const nb=document.getElementById("nextBtn");if(nb)nb.focus({preventScroll:true});return}
+  if(V.view==="rsum"){app.innerHTML=rsumView();return}
+  if(V.view==="pat"){app.innerHTML=patView();const i=document.getElementById("patin");if(i){i.focus({preventScroll:true});const v=i.value;i.value="";i.value=v}chainBar();return}
+  if(V.view==="chainEnd"){app.innerHTML=chainEndView();return}
+  _renderBase();chainBar()};
+function chainBar(){if(!CHAIN||CHAIN.step==="end"||!["pat","oG"].includes(V.view))return;app.insertAdjacentHTML("afterbegin",`<div class="chainbar"><span>完整 Reading 模考 · ${CHAIN.step==="RA"?"Part A":CHAIN.step==="RB"?"Part B":"Part C"}</span><span class="clock" data-start="${CHAIN.t0}" data-dur="3600000">60:00</span></div>`)}
+function rClick(a,b){
+  if(a==="rhub"||a==="pahub"){V={view:"rhub"};render();window.scrollTo(0,0);return true}
+  if(a==="planstart"||a==="planreset"){S.plan={start:today(),set:Date.now()};save();render();return true}
+  if(a==="rs30"){startRs30();return true}
+  if(a==="r30go"){V.R.phase="write";render();return true}
+  if(a==="r30fmt"){const f=document.getElementById("r30in");if(f)V.R.txt=f.value;V.R.fmt=b.dataset.v;render();return true}
+  if(a==="r30rate"){const R=V.R,T=getScan(R.sid),t=T.texts.find(x=>x.k===R.k);R.r=+b.dataset.v;rhist({k:"skim",id:R.id,r:R.r,fmt:R.fmt===textFmt(R.sid,t)});rlog("skim30");touchStreak();save();render();return true}
+  if(a==="rs5"){startRs5();return true}
+  if(a==="r5go"){rs5Go();return true}
+  if(a==="r5hit"){const R=V.R;if(R.phase!=="hunt")return true;const i=+b.dataset.i;if(!R.found.includes(i))R.found.push(i);
+    if(R.found.length===R.terms.length){R.phase="win";R.ms=Date.now()-R.t0;rhist({k:"scan5",id:R.id,ok:true,ms:R.ms,n:R.terms.length,miss:R.miss,tries:R.tries});rlog("scan5");touchStreak();save()}render();return true}
+  if(a==="r5miss"){if(V.R.phase==="hunt"){V.R.miss++;render()}return true}
+  if(a==="rlg"){startRlg();return true}
+  if(a==="rlrel"){const R=V.R;if(R.rel)return true;R.rel=b.dataset.v;render();return true}
+  if(a==="rlpick"){const R=V.R,it=R.items[R.qi],L=LITEMS[it.i];if(R.pick!=null)return true;R.pick=+b.dataset.v;const ov=k=>paWords(L.o[k]).filter(w=>paWords(L.s).includes(w)).length;
+    R.res.push({rel:R.rel===L.rel,ok:R.pick===0,trap:R.pick!==0&&ov(R.pick)>=ov(0)});render();return true}
+  if(a==="rlnext"){const R=V.R;R.qi++;R.rel=null;R.pick=null;if(R.qi>=R.items.length){rhist({k:"logic",sc:R.res.filter(r=>r.ok).length,n:R.res.length});rlog("logic");touchStreak();save()}render();window.scrollTo(0,0);return true}
+  if(a==="rsum"){startRsum();return true}
+  if(a==="pat"){startPAT(b.dataset.id);return true}
+  if(a==="patR"){startPAT(leastSet("pat"));return true}
+  if(a==="pamapR"){startPaMap(leastSet("map"));return true}
+  if(a==="pahuntR"){startPaHunt(leastSet("hunt"));return true}
+  if(a==="mockR"){const o=OFFS.filter(o=>o.RA&&o.RB&&o.RC);const c=id=>RH("mock").filter(h=>h.id===id).length;startMock(o.slice().sort((x,y)=>c(x.id)-c(y.id))[0].id);return true}
+  if(a==="mock"){startMock(b.dataset.t);return true}
+  if(a==="chainnext"){chainNext();return true}
+  if(V.view==="pat"&&V.X){const X=V.X,T=getScan(X.id);
+    if(a==="patbegin"){patBegin();return true}
+    if(a==="patquit"){CHAIN=null;V={view:"rhub"};render();return true}
+    if(a==="patgo"){patGo(+b.dataset.i);return true}
+    if(a==="patpick"){patSet(X.qi,b.dataset.v);patGo(patNextIdx());return true}
+    if(a==="pattap"){patSet(X.qi,b.dataset.v);patGo(patNextIdx());return true}
+    if(a==="patnext"){patNext();return true}
+    if(a==="patskip"){patSkip();return true}
+    if(a==="patuns"){const k=X.unsure.indexOf(X.qi);if(k>=0)X.unsure.splice(k,1);else X.unsure.push(X.qi);patSaveDraft();render();return true}
+    if(a==="patsubmit"){const left=T.q.filter((_,i)=>!patAnswered(X,i)).length;if(left&&!X.warned.sub){X.warned.sub=true;patSaveDraft();X.banner=`還有 ${left} 題空白。空白一定 0 分：用地圖猜一個再交卷。真的要交卷，再按一次「交卷」。`;render();return true}patSubmit();return true}
+    if(a==="patimg"){X.showImg=!X.showImg;patSaveDraft();render();return true}}
+  return false}
+app.addEventListener("click",ev=>{const b=ev.target.closest("[data-a]");if(!b)return;if(rClick(b.dataset.a,b)){ev.stopImmediatePropagation()}},true);
+app.addEventListener("submit",ev=>{const f=ev.target.dataset&&ev.target.dataset.f;
+  if(f==="patshort"){ev.preventDefault();ev.stopImmediatePropagation();patNext();return}
+  if(f==="r30"){ev.preventDefault();ev.stopImmediatePropagation();const t=document.getElementById("r30in");V.R.txt=t?t.value.trim():"";if(!V.R.txt||!V.R.fmt)return;V.R.phase="check";render();return}
+  if(f==="rsum"){ev.preventDefault();ev.stopImmediatePropagation();const t=document.getElementById("ans");const s=t?t.value.trim():"";if(!s)return;V.R.txt=s;V.R.res=sumCheck(SUMM[V.R.i].p,s);rlog("summ");rhist({k:"summ",i:V.R.i,ok:V.R.res.out.every(o=>o.ok)});touchStreak();save();render();return}},true);
+app.addEventListener("input",ev=>{if(ev.target.id==="patin"&&V.X)V.X.draft[V.X.qi]=ev.target.value;if(ev.target.id==="r30in"&&V.R)V.R.txt=ev.target.value},true);
+/* keyword hunter v2: up to two keywords, second-choice text, micro-routine timing */
+function startPaHunt(id){const T=getScan(id);const qs=shuffle(T.q.filter(q=>q.loc)).slice(0,8);
+  V={view:"pahunt",P:{id,qs,qi:0,step:"kw",kws:[],kwOk:null,t0:Date.now(),kwMs:0,t1:0,first:null,res:[]}};render();window.scrollTo(0,0)}
+function paHuntView(){const P=V.P,T=getScan(P.id),M=PAMAP[paKey(P.id)]||{};const lab=k=>M[k]||(T.texts.find(t=>t.k===k)||{}).h||k;
+  const top=`<div class="sess-top"><button class="btn ghost" data-a="rhub">結束</button><span class="label" style="flex:1;text-align:center">關鍵字獵人 · ${esc(T.title)}</span>${P.step==="text"?`<span class="clock" data-start="${P.t1}" data-dur="10000">0:10</span>`:""}<span class="mono">${Math.min(P.qi+1,P.qs.length)}/${P.qs.length}</span></div>`;
+  if(P.qi>=P.qs.length){const n=P.res.length,kw=P.res.filter(r=>r.kw).length,tx=P.res.filter(r=>r.tx).length,tx2=P.res.filter(r=>r.tx2).length,ak=avg(P.res.map(r=>r.kwMs)),at=avg(P.res.map(r=>r.ms));
+   return header()+`<section class="end"><h2>關鍵字獵人完成</h2><div class="res"><div><span class="label">關鍵字</span><b>${kw}/${n}</b></div><div><span class="label">第一篇就對</span><b>${tx}/${n}</b></div><div><span class="label">第二篇才找到</span><b>${tx2}</b></div></div>
+   <div class="res" style="margin-top:10px"><div><span class="label">抓關鍵字</span><b>${(ak/1000).toFixed(1)} 秒</b></div><div><span class="label">選文本</span><b>${(at/1000).toFixed(1)} 秒</b></div><div><span class="label">目標</span><b>3＋2 秒</b></div></div>
+   <p class="xp" style="margin-top:14px">${at>10000?"選文本太慢，通常是在重讀。靠 45 秒地圖記住每篇是什麼，再靠關鍵字直接跳過去。":"速度很好。考試時每題只讀關鍵字附近那一兩句。"}不要四篇一起找：先選最可能的一篇，掃 15 秒沒找到再換第二篇。</p>
+   <p class="note">Part A 的答案照抄原文、≤3 字、題目已給單位就不重寫。兩個答案都說得通時，選用字最接近題幹的那一個。</p>
+   <div class="row" style="margin-top:12px"><button class="btn primary" data-a="pat" data-id="${P.id}">做 15 分鐘限時全套</button><button class="btn" data-a="pahunt" data-id="${P.id}">再一次</button><button class="btn ghost" data-a="rhub">回到訓練中心</button></div></section>`}
+  const q=P.qs[P.qi],ks=paKeySet(T,q);
+  const stem=esc(q.q.replace(/^\d+\.\s*/,"")).split(/(\s+)/).map(w=>{if(!/\S/.test(w))return w;const n=w.toLowerCase().replace(/^[^a-z0-9]+|[^a-z0-9%]+$/g,"");if(!n||PASTOP.has(n))return w;
+    const sel=P.kws.includes(n);let c="";if(P.step!=="kw"){if(ks.has(n))c=" on";if(sel&&!ks.has(n))c=" miss"}else if(sel)c=" on";
+    return `<button class="kw${c}" data-a="phkw" data-w="${esc(n)}" ${P.step!=="kw"?"disabled":""} style="font:inherit;border:0;background:${c===" miss"?"var(--red-soft)":""};padding:0 2px">${w}</button>`}).join("");
+  let body="";
+  if(P.step==="kw")body=`<p class="muted" style="margin:0">第 1 步：點出 1–2 個關鍵字（藥名、數字、病名、處置、身體部位）。動詞和介系詞是填充字。</p><div><button class="btn primary" data-a="phkwok" ${P.kws.length?"":"disabled"}>確認關鍵字</button></div>`;
+  if(P.step==="text")body=`<p class="muted" style="margin:0">${P.kwOk?"✓ 好的關鍵字。":"有選到填充字或太籠統的字；標黃的才是能帶你找到答案的字。"}${P.first?`<b>不在 Text ${P.first}。</b>換第二可能的那一篇：`:"第 2 步：從地圖選最可能的一篇（目標 2 秒）。"}</p><div class="letters">${T.texts.map(t=>`<button class="btn" data-a="phtx" data-v="${t.k}" ${P.first===t.k?"disabled":""}>${t.k}</button>`).join("")}</div>`;
+  if(P.step==="fb"){const r=P.res[P.res.length-1],txt=T.texts.find(t=>t.k===q.loc[0]),sen=txt&&txt.s?txt.s[q.loc[1]]:"";
+   body=`<div class="fb"><div class="verdict ${r.tx?"ok":r.tx2?"":"no"}">${r.tx?"第一篇就找對":r.tx2?"第二篇找到":"在 Text "+q.loc[0]}</div>
+   <p class="muted" style="margin:0">抓關鍵字 ${(r.kwMs/1000).toFixed(1)} 秒（目標 3 秒）· 選文本 ${(r.ms/1000).toFixed(1)} 秒（目標 2 秒）</p>
+   <div class="tx hit"><h4><span class="k">${q.loc[0]}</span>${esc(lab(q.loc[0]))}</h4><div><span class="sen hit">${sen?logicHL(sen):"（見原版版面）"}</span></div></div>
+   ${q.show||q.a?`<p class="xp">答案：<b>${esc(q.t==="match"?"Text "+q.a:q.show||"")}</b>${q.map?"　關鍵字對應：<code>"+esc(q.map[0])+"</code> ↔ <code>"+esc(q.map[1])+"</code>":""}</p>`:""}
+   ${q.map?synBtnFor(q.map[0],q.map[1]):""}<div><button class="btn primary" data-a="phnext" id="nextBtn">${P.qi+1>=P.qs.length?"看結果":"下一題"}</button></div></div>`}
+  return top+`<div class="qbar"><span class="label">規則 2 · 找關鍵字</span><p class="qtext">${stem}</p>${body}</div>
+  ${P.step!=="fb"?`<div class="texts" style="grid-template-columns:repeat(2,minmax(0,1fr))">${T.texts.map(t=>`<div class="tx"><h4><span class="k">${t.k}</span>${esc(lab(t.k))}</h4></div>`).join("")}</div>`:""}`}
+const _paClick0=paClick;
+paClick=function(a,b){const P=V.P;
+  if(a==="pahub"){V={view:"rhub"};render();window.scrollTo(0,0);return true}
+  if(a==="phkw"&&P){if(P.step!=="kw")return true;const w=b.dataset.w,k=P.kws.indexOf(w);if(k>=0)P.kws.splice(k,1);else{if(P.kws.length>=2)P.kws.shift();P.kws.push(w)}render();return true}
+  if(a==="phkwok"&&P){if(!P.kws.length)return true;const T=getScan(P.id),ks=paKeySet(T,P.qs[P.qi]);P.kwOk=P.kws.some(w=>ks.has(w))&&P.kws.every(w=>ks.has(w));P.kwMs=Date.now()-P.t0;P.step="text";P.t1=Date.now();P.first=null;render();return true}
+  if(a==="phtx"&&P){if(P.step!=="text")return true;const q=P.qs[P.qi],ok=b.dataset.v===q.loc[0];
+    if(!ok&&!P.first){P.first=b.dataset.v;render();return true}
+    P.res.push({kw:P.kwOk,tx:ok&&!P.first,tx2:ok&&!!P.first,ms:Date.now()-P.t1,kwMs:P.kwMs});P.step="fb";render();return true}
+  if(a==="phnext"&&P){P.qi++;P.step="kw";P.kws=[];P.kwOk=null;P.first=null;P.t0=Date.now();if(P.qi>=P.qs.length){const n=P.res.length,sc=P.res.filter(r=>r.kw&&r.tx).length,r=S.lab["ph_"+P.id]||{};r.last=sc;r.total=n;r.best=Math.max(r.best||0,sc);S.lab["ph_"+P.id]=r;rhist({k:"hunt",id:P.id,sc,n});rlog("hunt");touchStreak();save()}render();window.scrollTo(0,0);return true}
+  if(a==="pmnext"&&P&&P.qi+1>=P.qs.length&&V.view==="pamap"){const T=getScan(P.id),nl=T.texts.filter(t=>P.pick[t.k]===t.k).length,nq=P.ans.filter(Boolean).length;rhist({k:"map",id:P.id,lab:nl,labT:T.texts.length,q:nq,qT:P.qs.length});rlog("map")}
+  return _paClick0(a,b)};
+
+function intensiveNote(q,pk){if(!q.ev)return "";const ov=o=>{const e=new Set(paWords(q.ev));return paWords(o).filter(w=>e.has(w)).length};
+  const scores=q.o.map(ov),best=Math.max(...scores);let t="";
+  if(pk!=null&&pk!==q.a&&scores[pk]>=scores[q.a]&&scores[pk]>0)t=`<p class="note">重字陷阱：你選的選項和原文重複 ${scores[pk]} 個字，正解只有 ${scores[q.a]} 個。Part B／C 要選意思相符的，不是字最像的。</p>`;
+  else if(pk===q.a&&scores[q.a]<best)t=`<p class="note">✓ 你避開了重字陷阱：有選項和原文重複更多字，但意思不對。</p>`;
+  return `<div class="map" style="display:block"><span class="label">關鍵句（精讀：文法 → 意思 → 邏輯關係）</span><p style="margin:4px 0 0">${logicHL(q.ev)}</p></div>${t}`}
 function boot(data){if(data&&data.V&&(data.V.view!=="q"||(data.V.s&&data.V.s.queue.every(e=>BYID[e.id]))))V=data.V;render()}
 try{window.claude?.hot?.snapshot?.(()=>({V}))}catch(e){}
 window.claude?.hot?.ready?window.claude.hot.ready(boot):boot(window.claude?.hot?.data??{});
